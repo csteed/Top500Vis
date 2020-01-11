@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<html>
+  <head>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+      body {
+        font: 12px sans-serif;
+        margin: 4px 20px 0px 20px;
+        background: whitesmoke;
+        /*margin: 0;*/
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Top500 Streamgraph</h2>
+    <div id="chart"></div>
+  </body>
+  <script>
+    let parseTime = d3.timeParse("%Y-%m");
+
+    d3.csv(
+      "output.csv",
+      ({
+        date,
+        rank,
+        computer,
+        site,
+        rmax,
+        rpeak,
+        manufacturer,
+        name,
+        processors,
+        segment,
+        country,
+        continent,
+        power
+      }) => ({
+        date: parseTime(date),
+        rank: 501 - (+rank) ,
+        computer: computer,
+        site: site,
+        rmax: +rmax,
+        rpeak: +rpeak,
+        manufacturer: manufacturer,
+        name: name,
+        processors: +processors,
+        segment: segment,
+        country: country,
+        continent: continent,
+        power: +power
+      })
+    )
+      .then(function(data) {
+        // data = data.filter(d => d.country === 'United States');
+
+        const getMetric = d => d.awesomeness;
+        const getTitle = d => d.site;
+
+        console.log(data);
+        const dateGroups = d3.nest().key(d => d.date).entries(data);
+        console.log(dateGroups);
+
+        // make a new metric that is percent of highest rmax for ranking
+        dateGroups.forEach(dateGroup => {
+          const maxRmax = d3.max(dateGroup.values, d => d.rmax);
+          dateGroup.values.forEach(v => {
+            const percentMax = (v.rmax / maxRmax) * 100.;
+            v['awesomeness'] = percentMax;
+          });
+        });
+
+        console.log(dateGroups);
+
+        let chartData = [];
+        let titles = new Set;
+        dateGroups.forEach(dateGroup => {
+          let sites = Object.create(null);
+          dateGroup.values.forEach(value => {
+            // const key = value.site + "(" + value.computer + ")";
+            // computers[key] = value.rmax;
+            // titles.add(value.site);
+            titles.add(getTitle(value))
+            if (!sites[getTitle(value)]) {
+              sites[getTitle(value)] = getMetric(value);
+            } else {
+              if (getMetric(value) > sites[getTitle(value)]) {
+                sites[getTitle(value)] = getMetric(value);
+              }
+            }
+          });
+          chartData.push({
+            date: new Date(dateGroup.key),
+            sites
+          });
+          Object.assign(chartData, {titles: Array.from(titles)});
+        });
+        console.log(chartData);
+
+        const stack = d3.stack()
+          .keys(chartData.titles)
+          .offset(d3.stackOffsetWiggle)
+          .order(d3.stackOrderInsideOut)
+          .value((d, key) => d.sites[key] || 0);
+          // .value((d, key) => {console.log(d); return d.sites[key] || 0;});
+
+        // console.log(stack);
+
+        const series = stack(chartData);
+        for (const s of series) {
+          s.sum = d3.sum(s, d => d[1] - d[0]);
+        }
+        console.log(series);
+
+        const margin = ({top: 10, right: 20, bottom: 10, left: 20});
+        const width = 430;
+        const height = width * 3.4;
+
+        const area = d3.area()
+          .curve(d3.curveBasis)
+          .y((d, i) => y(chartData[i].date))
+          .x0(d => x(d[0]))
+          .x1(d => x(d[1]));
+
+        const z = d3.scaleSequentialSqrt(t => d3.interpolateGreens((t + 0.5) / 2))
+          .domain(d3.extent(series, d => d.sum));
+        
+        const y = d3.scaleTime()
+          .domain(d3.extent(chartData, d => d.date))
+          .rangeRound([height - margin.top, margin.bottom])
+
+        const x = d3.scaleLinear()
+          .domain([
+            d3.min(series, d => d3.min(d, d => d[0])),
+            d3.max(series, d => d3.max(d, d => d[1]))
+          ])
+          .range([margin.left, width - margin.right])
+
+        const svg = d3.select('#chart').append("svg")
+          .attr("width", width)
+          .attr("height", height);
+
+        svg.append("g")
+          .attr("transform", `translate(${width - margin.right}, 0)`)
+          .call(d3.axisLeft(y)
+            .ticks(d3.timeMonth)
+            .tickFormat(d => d.toLocaleString(undefined, {month: "short"})))
+          .call(g => g.select(".domain").remove());
+        
+        svg.append("g")
+          // .attr("transform", `translate(${margin.left},0)`)
+          .call(d3.axisRight(y)
+            .ticks(d3.timeYear)
+            .tickSize(width - margin.left - margin.right)
+            .tickFormat(d => d.toLocaleString(undefined, {year: "numeric"})))
+          .call(g => g.select(".domain").remove())
+          .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
+          .call(g => g.selectAll(".tick text").attr("x", null).attr("dy", "-0.6em"));
+
+        svg.append("g")
+          .selectAll("path")
+          .data(series)
+          .join("path")
+            // .attr("fill", d => z(d.sum))
+            .attr("fill", d => d.key.includes('Oak Ridge National Laboratory') ? 'black' : z(d.sum))
+            // .attr("fill", d => {
+            //   if (d.key === "Oak Ridge National Laboratory") { 
+            //     console.log(d.key); 
+            //     return "black";
+            //   } else {
+            //     return z(d.sum);
+            //   }
+            // })
+            .attr("d", area)
+          .append("title")
+            .text(d => d.key);        
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  </script>
+</html>
