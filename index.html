@@ -18,7 +18,10 @@
   </body>
   <script>
     let parseTime = d3.timeParse("%Y-%m");
-
+    const removeSpaces = (str) => {
+      return str.replace(/\s+/g, '');
+    }
+    
     d3.csv(
       "output.csv",
       ({
@@ -55,7 +58,7 @@
         // data = data.filter(d => d.country === 'United States');
 
         const getMetric = d => d.awesomeness;
-        const getTitle = d => d.site;
+        const getTitle = d => d.computer;
 
         console.log(data);
         const dateGroups = d3.nest().key(d => d.date).entries(data);
@@ -112,9 +115,9 @@
         }
         console.log(series);
 
-        const margin = ({top: 10, right: 20, bottom: 10, left: 20});
-        const width = 430;
-        const height = width * 3.4;
+        const margin = ({top: 10, right: 40, bottom: 10, left: 20});
+        const width = 650;
+        const height = width * 4.5;
 
         const area = d3.area()
           .curve(d3.curveBasis)
@@ -122,7 +125,7 @@
           .x0(d => x(d[0]))
           .x1(d => x(d[1]));
 
-        const z = d3.scaleSequentialSqrt(t => d3.interpolateGreens((t + 0.5) / 2))
+        const z = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
           .domain(d3.extent(series, d => d.sum));
         
         const y = d3.scaleTime()
@@ -142,27 +145,29 @@
 
         svg.append("g")
           .attr("transform", `translate(${width - margin.right}, 0)`)
-          .call(d3.axisLeft(y)
+          .call(d3.axisRight(y)
             .ticks(d3.timeMonth)
             .tickFormat(d => d.toLocaleString(undefined, {month: "short"})))
+          .call(g => g.selectAll(".tick text").attr("fill", "gray"))
+          .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
           .call(g => g.select(".domain").remove());
         
         svg.append("g")
           // .attr("transform", `translate(${margin.left},0)`)
           .call(d3.axisRight(y)
             .ticks(d3.timeYear)
-            .tickSize(width - margin.left - margin.right)
+            .tickSize(width - margin.right)
             .tickFormat(d => d.toLocaleString(undefined, {year: "numeric"})))
           .call(g => g.select(".domain").remove())
           .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
-          .call(g => g.selectAll(".tick text").attr("x", null).attr("dy", "-0.6em"));
+          .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
 
         svg.append("g")
           .selectAll("path")
           .data(series)
           .join("path")
-            // .attr("fill", d => z(d.sum))
-            .attr("fill", d => d.key.includes('Oak Ridge National Laboratory') ? 'black' : z(d.sum))
+            .attr("fill", d => z(d.sum))
+            // .attr("fill", d => d.key.includes('Oak Ridge National Laboratory') ? 'black' : z(d.sum))
             // .attr("fill", d => {
             //   if (d.key === "Oak Ridge National Laboratory") { 
             //     console.log(d.key); 
@@ -172,8 +177,64 @@
             //   }
             // })
             .attr("d", area)
+            .attr("id", d => `${removeSpaces(d.key)}`)
           .append("title")
-            .text(d => d.key);        
+            .text(d => d.key);  
+        
+        svg.append("g")
+          .selectAll("rankingLine")
+            .data(chartData)
+          .enter().append("line")
+            .attr("stroke", "ghostwhite")
+            .attr("stroke-width", 1.5)
+            .attr("opacity", 0.65)
+            .attr("x1", 0)
+            .attr("y1", d => y(d.date))
+            .attr("x2", width-margin.right)
+            .attr("y2", d => y(d.date));
+        
+        // svg.append("g")
+        //     .attr("font-size", 6)
+        //     .attr("font-family", "sans-serif")
+        //     .attr("text-anchor", "middle")
+        //   .selectAll("text")
+        //   .data(series
+        //     .map(d => {
+        //       const i = d3.scan(d, (b, a) => (a[1] - a[0]) - (b[1] - b[0]));
+        //       return {
+        //         key: d.key,
+        //         date: data[i].date,
+        //         value: d[i][1] - d[i][0],
+        //         center: (d[i][0] + d[i][1]) / 2
+        //       };
+        //     })
+        //     .filter(d => d.value > 1e6)
+        //     .sort((a, b) => b.value - a.value)
+        //   )
+        //   .join("text")
+        //     .attr("x", d => x(d.center))
+        //     .attr("y", d => y(d.date))
+        //     .attr("dy", "0.35em")
+        //     .text(d => d.key)
+        //     .each(labelRemover());
+        
+        // function labelRemover() {
+        //   const spanIndex = new Map;
+        //   return function() {
+        //     const box = this.getBBox();
+        //     const spans = spanIndex.get(box.y) || [];
+        //     const x0 = box.x - 8, x1 = box.x + box.width + 8;
+        //     for (const [s0, s1] of spans) {
+        //       if (x1 >= s0 && x0 <= s1) {
+        //         this.parentNode.removeChild(this);
+        //         return;
+        //       }
+        //     }
+        //     spans.push([x0, x1, this.textContent]);
+        //     spanIndex.set(box.y, spans);
+        //   };
+        // }
+        
       })
       .catch(function(error) {
         console.log(error);
