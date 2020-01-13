@@ -14,10 +14,14 @@
   </head>
   <body>
     <h2>Top500 Streamgraph</h2>
+    <label for="searchField">Highlight</label>
+    <input id="searchField" type="text" autocomplete="on"></input><br/>
+
     <div id="chart"></div>
   </body>
   <script>
     let parseTime = d3.timeParse("%Y-%m");
+
     const removeSpaces = (str) => {
       return str.replace(/\s+/g, '');
     }
@@ -58,7 +62,7 @@
         // data = data.filter(d => d.country === 'United States');
 
         const getMetric = d => d.awesomeness;
-        const getTitle = d => d.computer;
+        const getTitle = d => d.country;
 
         console.log(data);
         const dateGroups = d3.nest().key(d => d.date).entries(data);
@@ -116,7 +120,7 @@
         console.log(series);
 
         const margin = ({top: 10, right: 40, bottom: 10, left: 20});
-        const width = 650;
+        const width = 700;
         const height = width * 4.5;
 
         const area = d3.area()
@@ -177,10 +181,10 @@
             //   }
             // })
             .attr("d", area)
-            .attr("id", d => `${removeSpaces(d.key)}`)
+            // .attr("id", d => `${removeSpaces(d.key)}`)
           .append("title")
             .text(d => d.key);  
-        
+                
         svg.append("g")
           .selectAll("rankingLine")
             .data(chartData)
@@ -194,7 +198,7 @@
             .attr("y2", d => y(d.date));
         
         // svg.append("g")
-        //     .attr("font-size", 6)
+        //     .attr("font-size", 10)
         //     .attr("font-family", "sans-serif")
         //     .attr("text-anchor", "middle")
         //   .selectAll("text")
@@ -203,7 +207,7 @@
         //       const i = d3.scan(d, (b, a) => (a[1] - a[0]) - (b[1] - b[0]));
         //       return {
         //         key: d.key,
-        //         date: data[i].date,
+        //         date: chartData[i].date,
         //         value: d[i][1] - d[i][0],
         //         center: (d[i][0] + d[i][1]) / 2
         //       };
@@ -218,23 +222,22 @@
         //     .text(d => d.key)
         //     .each(labelRemover());
         
-        // function labelRemover() {
-        //   const spanIndex = new Map;
-        //   return function() {
-        //     const box = this.getBBox();
-        //     const spans = spanIndex.get(box.y) || [];
-        //     const x0 = box.x - 8, x1 = box.x + box.width + 8;
-        //     for (const [s0, s1] of spans) {
-        //       if (x1 >= s0 && x0 <= s1) {
-        //         this.parentNode.removeChild(this);
-        //         return;
-        //       }
-        //     }
-        //     spans.push([x0, x1, this.textContent]);
-        //     spanIndex.set(box.y, spans);
-        //   };
-        // }
-        
+        function labelRemover() {
+          const spanIndex = new Map;
+          return function() {
+            const box = this.getBBox();
+            const spans = spanIndex.get(box.y) || [];
+            const x0 = box.x - 8, x1 = box.x + box.width + 8;
+            for (const [s0, s1] of spans) {
+              if (x1 >= s0 && x0 <= s1) {
+                this.parentNode.removeChild(this);
+                return;
+              }
+            }
+            spans.push([x0, x1, this.textContent]);
+            spanIndex.set(box.y, spans);
+          };
+        }
       })
       .catch(function(error) {
         console.log(error);
