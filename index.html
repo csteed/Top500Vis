@@ -6,26 +6,326 @@
     <style>
       body {
         font: 12px sans-serif;
-        margin: 4px 20px 0px 20px;
-        background: whitesmoke;
-        /*margin: 0;*/
+        /* margin: 4px 20px 0px 20px; */
+        /* background: gray; */
+        background-color: whitesmoke;
+      }
+
+      .top {
+        background-color: whitesmoke;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        width: 100%;
+      }
+
+      .main {
+        margin-top: 280px;
       }
     </style>
   </head>
   <body>
-    <h2>Top500 Streamgraph</h2>
-    <label for="searchField">Highlight</label>
-    <input id="searchField" type="text" autocomplete="on"></input><br/>
-
-    <div id="chart"></div>
+    <div class="top">
+      <h2>Supercomputing Top500 Streamgraph Visualization</h2>
+      <h3>Description:</h3>
+      <p>
+        This webpage presents selected statistics from the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a streamgraph chart based on the style of <a href="http://leebyron.com/streamgraph/" target="_blank">Lee Byron <i>et al</i></a>.
+      </p>
+      <ul>
+        <li><b>Area Field:</b> Select the field to assign to stream areas</li>
+        <li><b>Value Field:</b> Select the value for sizing areas</li>
+        <li><b>Highlight Area:</b> Select specific area to highlight</li>
+        <li><b>White Horizontal Lines:</b> Show the dates of Top500 rankings</li>
+        <li><b>Area Colors:</b> Encode the value sum for each ranking of the area</li>
+      </ul>
+      <h3>Controls:</h3>
+      <p>
+        <label for="areaFieldSelect">Area Field: </label>
+        <select id="areaFieldSelect" onChange="areaFieldSelectChanged()">
+          <option selected>Country</option>
+          <option>Continent</option>
+          <option>Computer</option>
+          <option>Manufacturer</option>
+          <option>Region</option>
+          <option>Segment</option>
+          <option>Site</option>
+        </select><br/><br/>
+        <label for="valueFieldSelect">Value Field: </label>
+        <select id="valueFieldSelect" onChange="valueFieldSelectChanged()">
+          <option selected>% of Highest Ranking RMax</option>
+          <option>RMax</option>
+          <option>RPeak</option>
+          <!-- <!-- <option>Rank</option> --> -->
+          <!-- <option>Processors</option> -->
+          <option>Power</option>
+        </select><br/><br/>
+        <label for="highlightAreaSelect">Highlight Area: </label>
+        <select id="highlightAreaSelect" onChange="highlightAreaSelectChanged()"></select>
+      </p>
+      <hr/>
+    </div>
+    <div class="main">
+      <div id="chart"></div>
+    </div>
+    <center>
+      <h4>&copy; <a href="https://www.ornl.gov">Oak Ridge National Laboratory</a>
+          <script type="text/javascript">
+              document.write(new Date().getFullYear());
+          </script>
+      </h4>
+    </center>
   </body>
+
   <script>
     let parseTime = d3.timeParse("%Y-%m");
+    let fileData;
+    let chartData;
+    let titleIDMap;
+    let svg;
+    let z;
+    let currentHighlightArea;
+    // const highlightColor = "#1E8449";
+    const highlightColor = "dodgerblue"
+    // const highlightColor = d3.rgb(128, 120, 183);
 
     const removeSpaces = (str) => {
       return str.replace(/\s+/g, '');
+    };
+
+    const getSelectedAreaField = () => {
+      const select = document.getElementById('areaFieldSelect');
+      return select.options[select.selectedIndex].text;
+    };
+
+    const getSelectedValueField = () => {
+      const select = document.getElementById('valueFieldSelect');
+      return select.options[select.selectedIndex].text;
+    };
+
+    const getSelectedHighlightArea = () => {
+      const select = document.getElementById('highlightAreaSelect');
+      return select.options[select.selectedIndex].text;
     }
-    
+
+    const areaFieldSelectChanged = () => {
+      loadData();
+      createChart();
+      populateHighlightAreaSelect();
+    };
+
+    const valueFieldSelectChanged = () => {
+      loadData();
+      createChart();
+    };
+
+    const highlightAreaSelectChanged = () => {
+      const selectedHighlightArea = getSelectedHighlightArea();
+
+      if (currentHighlightArea) {
+        const areaID = titleIDMap.get(currentHighlightArea);
+        svg.select(`.areaPath#${areaID}`)
+          .transition().duration(500)
+          .attr("fill", d => z(d.sum));
+      }
+
+      if (selectedHighlightArea != 'Choose Highlight Area') {
+        const areaID = titleIDMap.get(selectedHighlightArea);
+        svg.select(`.areaPath#${areaID}`)
+          .transition().duration(500)
+          .attr("fill", highlightColor);
+          // .attr("fill", "#1E8449");
+        currentHighlightArea = selectedHighlightArea;
+      } else {
+        currentHighlightArea = null;
+      }
+
+      // if (selectedHighlightArea === 'Choose Highlight Area') {
+      //   svg.selectAll('.areaPath')
+      //     .attr("fill", d => z(d.sum));
+      // } else {
+      //   svg.selectAll('.areaPath')
+      //     .transition().duration(500)
+      //     .attr("fill", d => d.key === selectedHighlightArea ? "#1E8449" : z(d.sum));
+          
+      // }
+      // const areaID = titleIDMap.get(selectedHighlightArea);
+      // console.log(`highlighing ${selectedHighlightArea} with ID ${areaID}`);
+      // svg.select(`.areaPath#${areaID}`).attr("fill", "green");
+      // svg.select(`.areaPath#${titleIDMap.get("China")}`)
+        // .attr("fill", "green");
+    };
+
+    const populateHighlightAreaSelect = () => {
+      const select = document.getElementById('highlightAreaSelect');
+      for (let i = select.options.length - 1; i >= 0; i--) {
+        select.remove(i);
+      }
+
+      const highlightOptions = [...titleIDMap.keys()];
+      console.log(highlightOptions);
+
+      highlightOptions.sort(d3.ascending);
+      highlightOptions.unshift('Choose Highlight Area');
+      highlightOptions.forEach(option => {
+        select.options[select.options.length] = new Option(option);
+      });
+    };
+
+    const loadData = () => {
+      const selectedAreaField = getSelectedAreaField().toLowerCase();
+      const getTitle = d => d[selectedAreaField];
+      let selectedValueField = getSelectedValueField().toLowerCase();
+      if (selectedValueField === '% of highest ranking rmax') {
+        selectedValueField = 'awesomeness';
+      }
+      const getMetric = d => d[selectedValueField];
+      // const getMetric = d => d.awesomeness;
+      // const getTitle = d => d.country;
+
+      const dateGroups = d3.nest().key(d => d.date).entries(fileData);
+      console.log(dateGroups);
+
+      // make a new metric that is percent of highest rmax for ranking
+      dateGroups.forEach(dateGroup => {
+        const maxRmax = d3.max(dateGroup.values, d => d.rmax);
+        dateGroup.values.forEach(v => {
+          const percentMax = (v.rmax / maxRmax) * 100.;
+          v['awesomeness'] = percentMax;
+        });
+      });
+
+      console.log(dateGroups);
+
+      chartData = [];
+      let titles = new Set;
+      dateGroups.forEach(dateGroup => {
+        let sites = Object.create(null);
+        dateGroup.values.forEach(value => {
+          titles.add(getTitle(value))
+          if (!sites[getTitle(value)]) {
+            sites[getTitle(value)] = getMetric(value);
+          } else {
+            if (getMetric(value) > sites[getTitle(value)]) {
+              sites[getTitle(value)] = getMetric(value);
+            }
+          }
+        });
+        chartData.push({
+          date: new Date(dateGroup.key),
+          sites
+        });
+        Object.assign(chartData, {titles: Array.from(titles)});
+      });
+      console.log(chartData);
+
+      const getRandomInt = (min, max) => {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1) + min);
+      }
+
+      titleIDMap = new Map();
+      chartData.titles.forEach(title => {
+        const titleID = `${removeSpaces(title).substring(0,2).toLowerCase()}${getRandomInt(1000,9999)}`;
+        while (titleIDMap.has(titleID)) {
+          titleID = `${removeSpaces(title).substring(0,3).toLowerCase()}${getRandomInt(1000,9999)}`;
+        }
+        titleIDMap.set(title, titleID);
+      });
+
+      console.log(titleIDMap);
+    };
+
+
+    const createChart = () => {
+      d3.select('#chart').selectAll('*').remove();
+
+      const stack = d3.stack()
+        .keys(chartData.titles)
+        .offset(d3.stackOffsetWiggle)
+        .order(d3.stackOrderInsideOut)
+        .value((d, key) => d.sites[key] || 0);
+        // .value((d, key) => {console.log(d); return d.sites[key] || 0;});
+
+      // console.log(stack);
+
+      const series = stack(chartData);
+      for (const s of series) {
+        s.sum = d3.sum(s, d => d[1] - d[0]);
+      }
+      console.log(series);
+
+      const margin = ({top: 10, right: 40, bottom: 10, left: 20});
+      const width = 700;
+      const height = width * 4.5;
+
+      const area = d3.area()
+        .curve(d3.curveBasis)
+        .y((d, i) => y(chartData[i].date))
+        .x0(d => x(d[0]))
+        .x1(d => x(d[1]));
+
+      z = d3.scaleSequentialSqrt(t => d3.interpolateGreys((t + 0.5) / 2))
+        .domain(d3.extent(series, d => d.sum));
+      
+      const y = d3.scaleTime()
+        .domain(d3.extent(chartData, d => d.date))
+        .rangeRound([height - margin.top, margin.bottom])
+
+      const x = d3.scaleLinear()
+        .domain([
+          d3.min(series, d => d3.min(d, d => d[0])),
+          d3.max(series, d => d3.max(d, d => d[1]))
+        ])
+        .range([margin.left, width - margin.right])
+
+      svg = d3.select('#chart').append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      svg.append("g")
+        .attr("transform", `translate(${width - margin.right}, 0)`)
+        .call(d3.axisRight(y)
+          .ticks(d3.timeMonth)
+          .tickFormat(d => d.toLocaleString(undefined, {month: "short"})))
+        .call(g => g.selectAll(".tick text").attr("fill", "gray"))
+        .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
+        .call(g => g.select(".domain").remove());
+      
+      svg.append("g")
+        // .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisRight(y)
+          .ticks(d3.timeYear)
+          .tickSize(width - margin.right)
+          .tickFormat(d => d.toLocaleString(undefined, {year: "numeric"})))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
+        .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
+
+      svg.append("g")
+        .selectAll("path")
+        .data(series)
+        .join("path")
+          .attr("fill", d => z(d.sum))
+          .attr("d", area)
+          .attr("class", "areaPath")
+          .attr("id", d => `${titleIDMap.get(d.key)}`)
+        .append("title")
+          .text(d => d.key);  
+              
+      svg.append("g")
+        .selectAll("rankingLine")
+          .data(chartData)
+        .enter().append("line")
+          .attr("stroke", "ghostwhite")
+          .attr("stroke-width", 1.5)
+          .attr("opacity", 0.65)
+          .attr("x1", 0)
+          .attr("y1", d => y(d.date))
+          .attr("x2", width-margin.right)
+          .attr("y2", d => y(d.date));
+    };
+        
     d3.csv(
       "output.csv",
       ({
@@ -37,11 +337,11 @@
         rpeak,
         manufacturer,
         name,
-        processors,
         segment,
         country,
         continent,
-        power
+        power,
+        region,
       }) => ({
         date: parseTime(date),
         rank: 501 - (+rank) ,
@@ -51,193 +351,18 @@
         rpeak: +rpeak,
         manufacturer: manufacturer,
         name: name,
-        processors: +processors,
         segment: segment,
         country: country,
         continent: continent,
+        region: region,
         power: +power
       })
     )
       .then(function(data) {
-        // data = data.filter(d => d.country === 'United States');
-
-        const getMetric = d => d.awesomeness;
-        const getTitle = d => d.country;
-
-        console.log(data);
-        const dateGroups = d3.nest().key(d => d.date).entries(data);
-        console.log(dateGroups);
-
-        // make a new metric that is percent of highest rmax for ranking
-        dateGroups.forEach(dateGroup => {
-          const maxRmax = d3.max(dateGroup.values, d => d.rmax);
-          dateGroup.values.forEach(v => {
-            const percentMax = (v.rmax / maxRmax) * 100.;
-            v['awesomeness'] = percentMax;
-          });
-        });
-
-        console.log(dateGroups);
-
-        let chartData = [];
-        let titles = new Set;
-        dateGroups.forEach(dateGroup => {
-          let sites = Object.create(null);
-          dateGroup.values.forEach(value => {
-            // const key = value.site + "(" + value.computer + ")";
-            // computers[key] = value.rmax;
-            // titles.add(value.site);
-            titles.add(getTitle(value))
-            if (!sites[getTitle(value)]) {
-              sites[getTitle(value)] = getMetric(value);
-            } else {
-              if (getMetric(value) > sites[getTitle(value)]) {
-                sites[getTitle(value)] = getMetric(value);
-              }
-            }
-          });
-          chartData.push({
-            date: new Date(dateGroup.key),
-            sites
-          });
-          Object.assign(chartData, {titles: Array.from(titles)});
-        });
-        console.log(chartData);
-
-        const stack = d3.stack()
-          .keys(chartData.titles)
-          .offset(d3.stackOffsetWiggle)
-          .order(d3.stackOrderInsideOut)
-          .value((d, key) => d.sites[key] || 0);
-          // .value((d, key) => {console.log(d); return d.sites[key] || 0;});
-
-        // console.log(stack);
-
-        const series = stack(chartData);
-        for (const s of series) {
-          s.sum = d3.sum(s, d => d[1] - d[0]);
-        }
-        console.log(series);
-
-        const margin = ({top: 10, right: 40, bottom: 10, left: 20});
-        const width = 700;
-        const height = width * 4.5;
-
-        const area = d3.area()
-          .curve(d3.curveBasis)
-          .y((d, i) => y(chartData[i].date))
-          .x0(d => x(d[0]))
-          .x1(d => x(d[1]));
-
-        const z = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
-          .domain(d3.extent(series, d => d.sum));
-        
-        const y = d3.scaleTime()
-          .domain(d3.extent(chartData, d => d.date))
-          .rangeRound([height - margin.top, margin.bottom])
-
-        const x = d3.scaleLinear()
-          .domain([
-            d3.min(series, d => d3.min(d, d => d[0])),
-            d3.max(series, d => d3.max(d, d => d[1]))
-          ])
-          .range([margin.left, width - margin.right])
-
-        const svg = d3.select('#chart').append("svg")
-          .attr("width", width)
-          .attr("height", height);
-
-        svg.append("g")
-          .attr("transform", `translate(${width - margin.right}, 0)`)
-          .call(d3.axisRight(y)
-            .ticks(d3.timeMonth)
-            .tickFormat(d => d.toLocaleString(undefined, {month: "short"})))
-          .call(g => g.selectAll(".tick text").attr("fill", "gray"))
-          .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
-          .call(g => g.select(".domain").remove());
-        
-        svg.append("g")
-          // .attr("transform", `translate(${margin.left},0)`)
-          .call(d3.axisRight(y)
-            .ticks(d3.timeYear)
-            .tickSize(width - margin.right)
-            .tickFormat(d => d.toLocaleString(undefined, {year: "numeric"})))
-          .call(g => g.select(".domain").remove())
-          .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
-          .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
-
-        svg.append("g")
-          .selectAll("path")
-          .data(series)
-          .join("path")
-            .attr("fill", d => z(d.sum))
-            // .attr("fill", d => d.key.includes('Oak Ridge National Laboratory') ? 'black' : z(d.sum))
-            // .attr("fill", d => {
-            //   if (d.key === "Oak Ridge National Laboratory") { 
-            //     console.log(d.key); 
-            //     return "black";
-            //   } else {
-            //     return z(d.sum);
-            //   }
-            // })
-            .attr("d", area)
-            // .attr("id", d => `${removeSpaces(d.key)}`)
-          .append("title")
-            .text(d => d.key);  
-                
-        svg.append("g")
-          .selectAll("rankingLine")
-            .data(chartData)
-          .enter().append("line")
-            .attr("stroke", "ghostwhite")
-            .attr("stroke-width", 1.5)
-            .attr("opacity", 0.65)
-            .attr("x1", 0)
-            .attr("y1", d => y(d.date))
-            .attr("x2", width-margin.right)
-            .attr("y2", d => y(d.date));
-        
-        // svg.append("g")
-        //     .attr("font-size", 10)
-        //     .attr("font-family", "sans-serif")
-        //     .attr("text-anchor", "middle")
-        //   .selectAll("text")
-        //   .data(series
-        //     .map(d => {
-        //       const i = d3.scan(d, (b, a) => (a[1] - a[0]) - (b[1] - b[0]));
-        //       return {
-        //         key: d.key,
-        //         date: chartData[i].date,
-        //         value: d[i][1] - d[i][0],
-        //         center: (d[i][0] + d[i][1]) / 2
-        //       };
-        //     })
-        //     .filter(d => d.value > 1e6)
-        //     .sort((a, b) => b.value - a.value)
-        //   )
-        //   .join("text")
-        //     .attr("x", d => x(d.center))
-        //     .attr("y", d => y(d.date))
-        //     .attr("dy", "0.35em")
-        //     .text(d => d.key)
-        //     .each(labelRemover());
-        
-        function labelRemover() {
-          const spanIndex = new Map;
-          return function() {
-            const box = this.getBBox();
-            const spans = spanIndex.get(box.y) || [];
-            const x0 = box.x - 8, x1 = box.x + box.width + 8;
-            for (const [s0, s1] of spans) {
-              if (x1 >= s0 && x0 <= s1) {
-                this.parentNode.removeChild(this);
-                return;
-              }
-            }
-            spans.push([x0, x1, this.textContent]);
-            spanIndex.set(box.y, spans);
-          };
-        }
+        fileData = data;
+        loadData();
+        createChart();
+        populateHighlightAreaSelect();
       })
       .catch(function(error) {
         console.log(error);
