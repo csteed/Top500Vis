@@ -60,7 +60,9 @@
           <option>Power</option>
         </select><br/><br/>
         <label for="highlightAreaSelect">Highlight Area: </label>
-        <select id="highlightAreaSelect" onChange="highlightAreaSelectChanged()"></select>
+        <select id="highlightAreaSelect" onChange="highlightAreaSelectChanged()"></select><br/><br/>
+        <label for="countryFilterSelect">Country Filter: </label>
+        <select id="countryFilterSelect" onChange="countryFilterSelectChanged()"></select>
       </p>
       <hr/>
     </div>
@@ -105,6 +107,11 @@
 
     const getSelectedHighlightArea = () => {
       const select = document.getElementById('highlightAreaSelect');
+      return select.options[select.selectedIndex].text;
+    }
+
+    const getSelectedCountryFilter = () => {
+      const select = document.getElementById('countryFilterSelect');
       return select.options[select.selectedIndex].text;
     }
 
@@ -172,6 +179,31 @@
       });
     };
 
+    const populateCountryFilterSelect = () => {
+      const select = document.getElementById('countryFilterSelect');
+      for (let i = select.options.length - 1; i >= 0; i--) {
+        select.remove(i);
+      }
+
+      const countries = [...new Set(fileData.map(d => d.country))];
+      console.log(countries);
+      countries.sort(d3.ascending);
+      countries.unshift('All');
+      countries.forEach(country => {
+        select.options[select.options.length] = new Option(country);
+      });
+    };
+
+    const countryFilterSelectChanged = () => {
+      // const select = document.getElementById('countryFilterSelect');
+      // const selectedCountry = select.options[select.selectedIndex].text;
+      // console.log(`selectedCountry: ${selectedCountry}`);
+      loadData();
+      createChart();
+    };
+
+    
+
     const loadData = () => {
       const selectedAreaField = getSelectedAreaField().toLowerCase();
       const getTitle = d => d[selectedAreaField];
@@ -183,7 +215,15 @@
       // const getMetric = d => d.awesomeness;
       // const getTitle = d => d.country;
 
-      const dateGroups = d3.nest().key(d => d.date).entries(fileData);
+      let dateGroups;
+      const selectedCountryFilter = getSelectedCountryFilter();
+      if (selectedCountryFilter != 'All') {
+        dateGroups = d3.nest().key(d => d.date).entries(fileData.filter(d => d.country === selectedCountryFilter));
+      } else {
+        dateGroups = d3.nest().key(d => d.date).entries(fileData);
+      }
+
+      // const dateGroups = d3.nest().key(d => d.date).entries(fileData);
       console.log(dateGroups);
 
       // make a new metric that is percent of highest rmax for ranking
@@ -257,8 +297,10 @@
       console.log(series);
 
       const margin = ({top: 40, right: 40, bottom: 40, left: 20});
-      const height = 560;
-      const width = height * 3.8;
+      const width = document.getElementById('chart').clientWidth;
+      const height = width / 3.8;
+      // const height = 560;
+      // const width = height * 3.8;
       // const width = 700;
       // const height = width * 4.5;
 
@@ -325,6 +367,16 @@
           .attr("d", area)
           .attr("class", "areaPath")
           .attr("id", d => `${titleIDMap.get(d.key)}`)
+          .on("mouseover", d => {
+            console.log(d3.select(`#${titleIDMap.get(d.key)}`));
+            d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zPurples(d.sum));
+            // d3.select(this).attr("fill", "orange");
+            // d3.select(this).select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zPurples(d.sum));
+          })
+          .on("mouseout", d => {
+            d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zGreys(d.sum));
+            // d3.select(this).attr("fill", zGreys(d.sum));
+          })
         .append("title")
           .text(d => d.key);  
               
@@ -334,8 +386,8 @@
         .enter().append("line")
           .attr("stroke", "ghostwhite")
           .attr("stroke-width", 1.5)
-          .attr("opacity", 0.65)
-          .attr("y1", 0)
+          .attr("opacity", 0.25)
+          .attr("y1", margin.top)
           .attr("x1", d => x(d.date))
           .attr("y2", height-margin.bottom)
           .attr("x2", d => x(d.date));
@@ -379,6 +431,7 @@
     )
       .then(function(data) {
         fileData = data;
+        populateCountryFilterSelect();
         loadData();
         createChart();
         populateHighlightAreaSelect();
