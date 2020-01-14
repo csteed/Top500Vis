@@ -20,7 +20,7 @@
       }
 
       .main {
-        margin-top: 280px;
+        margin-top: 330px;
       }
     </style>
   </head>
@@ -82,7 +82,8 @@
     let chartData;
     let titleIDMap;
     let svg;
-    let z;
+    let zGreys;
+    let zPurples;
     let currentHighlightArea;
     // const highlightColor = "#1E8449";
     const highlightColor = "dodgerblue"
@@ -125,14 +126,14 @@
         const areaID = titleIDMap.get(currentHighlightArea);
         svg.select(`.areaPath#${areaID}`)
           .transition().duration(500)
-          .attr("fill", d => z(d.sum));
+          .attr("fill", d => zGreys(d.sum));
       }
 
       if (selectedHighlightArea != 'Choose Highlight Area') {
         const areaID = titleIDMap.get(selectedHighlightArea);
         svg.select(`.areaPath#${areaID}`)
           .transition().duration(500)
-          .attr("fill", highlightColor);
+          .attr("fill", d => zPurples(d.sum));
           // .attr("fill", "#1E8449");
         currentHighlightArea = selectedHighlightArea;
       } else {
@@ -265,7 +266,10 @@
         .x0(d => x(d[0]))
         .x1(d => x(d[1]));
 
-      z = d3.scaleSequentialSqrt(t => d3.interpolateGreys((t + 0.5) / 2))
+      zGreys = d3.scaleSequentialSqrt(t => d3.interpolateGreys((t + 0.5) / 2))
+        .domain(d3.extent(series, d => d.sum));
+
+      zPurples = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
       
       const y = d3.scaleTime()
@@ -306,7 +310,7 @@
         .selectAll("path")
         .data(series)
         .join("path")
-          .attr("fill", d => z(d.sum))
+          .attr("fill", d => zGreys(d.sum))
           .attr("d", area)
           .attr("class", "areaPath")
           .attr("id", d => `${titleIDMap.get(d.key)}`)
