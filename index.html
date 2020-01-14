@@ -163,7 +163,7 @@
       }
 
       const highlightOptions = [...titleIDMap.keys()];
-      console.log(highlightOptions);
+      // console.log(highlightOptions);
 
       highlightOptions.sort(d3.ascending);
       highlightOptions.unshift('Choose Highlight Area');
@@ -256,15 +256,20 @@
       }
       console.log(series);
 
-      const margin = ({top: 10, right: 40, bottom: 10, left: 20});
-      const width = 700;
-      const height = width * 4.5;
+      const margin = ({top: 40, right: 40, bottom: 40, left: 20});
+      const height = 560;
+      const width = height * 3.8;
+      // const width = 700;
+      // const height = width * 4.5;
 
       const area = d3.area()
         .curve(d3.curveBasis)
-        .y((d, i) => y(chartData[i].date))
-        .x0(d => x(d[0]))
-        .x1(d => x(d[1]));
+        .x((d, i) => x(chartData[i].date))
+        .y0(d => y(d[0]))
+        .y1(d => y(d[1]));
+        // .y((d, i) => y(chartData[i].date))
+        // .x0(d => x(d[0]))
+        // .x1(d => x(d[1]));
 
       zGreys = d3.scaleSequentialSqrt(t => d3.interpolateGreys((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
@@ -272,39 +277,45 @@
       zPurples = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
       
-      const y = d3.scaleTime()
+      const x = d3.scaleTime()
         .domain(d3.extent(chartData, d => d.date))
-        .rangeRound([height - margin.top, margin.bottom])
+        .rangeRound([margin.left, width - margin.right]);
 
-      const x = d3.scaleLinear()
+      const y = d3.scaleLinear()
         .domain([
           d3.min(series, d => d3.min(d, d => d[0])),
           d3.max(series, d => d3.max(d, d => d[1]))
         ])
-        .range([margin.left, width - margin.right])
+        .range([height - margin.top, margin.bottom]);
 
       svg = d3.select('#chart').append("svg")
         .attr("width", width)
         .attr("height", height);
 
       svg.append("g")
-        .attr("transform", `translate(${width - margin.right}, 0)`)
-        .call(d3.axisRight(y)
-          .ticks(d3.timeMonth)
+        // .attr("transform", `translate(${width - margin.right}, 0)`)
+        // .call(d3.axisRight(y)
+        .attr("transform", `translate(0, ${height - margin.bottom})`)
+        .call(d3.axisBottom(x)
+          .ticks(d3.timeMonth.every(3))
           .tickFormat(d => d.toLocaleString(undefined, {month: "short"})))
         .call(g => g.selectAll(".tick text").attr("fill", "gray"))
         .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
         .call(g => g.select(".domain").remove());
       
       svg.append("g")
+        .attr("transform", `translate(0, ${margin.top})`)
         // .attr("transform", `translate(${margin.left},0)`)
-        .call(d3.axisRight(y)
+        // .call(d3.axisRight(y)
+        .call(d3.axisTop(x)
           .ticks(d3.timeYear)
-          .tickSize(width - margin.right)
+          // .tickSize(width - margin.right)
+          .tickSize(-(height - margin.bottom - margin.top))
           .tickFormat(d => d.toLocaleString(undefined, {year: "numeric"})))
         .call(g => g.select(".domain").remove())
         .call(g => g.selectAll(".tick line").attr("stroke", "#ccc"))
-        .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
+        .call(g => g.selectAll(".tick text").attr("fill", "gray"));
+        // .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
 
       svg.append("g")
         .selectAll("path")
@@ -324,10 +335,14 @@
           .attr("stroke", "ghostwhite")
           .attr("stroke-width", 1.5)
           .attr("opacity", 0.65)
-          .attr("x1", 0)
-          .attr("y1", d => y(d.date))
-          .attr("x2", width-margin.right)
-          .attr("y2", d => y(d.date));
+          .attr("y1", 0)
+          .attr("x1", d => x(d.date))
+          .attr("y2", height-margin.bottom)
+          .attr("x2", d => x(d.date));
+          // .attr("x1", 0)
+          // .attr("y1", d => y(d.date))
+          // .attr("x2", width-margin.right)
+          // .attr("y2", d => y(d.date));
     };
         
     d3.csv(
