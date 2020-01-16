@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<html>
+  <head>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-array.v2.min.js"></script>
+    <style>
+      body {
+        font: 12px sans-serif;
+        /* margin: 4px 20px 0px 20px; */
+        /* background: gray; */
+        background-color: whitesmoke;
+      }
+
+      .top {
+        background-color: whitesmoke;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        width: 100%;
+      }
+
+      .main {
+        margin-top: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <h2>Supercomputing Top500 Streamgraph Visualization</h2>
+      <h3>Description:</h3>
+      <p>
+        This webpage presents the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as an interactive beeswarm chart.
+      </p>
+      <input type="range" id="dateSlider" onChange="dateSliderChanged()"></input>
+      <hr/>
+
+    </div>
+    <div class="main">
+      <div id="chart"></div>
+    </div>
+    <center>
+      <h4>&copy; <a href="https://www.ornl.gov">Oak Ridge National Laboratory</a>
+          <script type="text/javascript">
+              document.write(new Date().getFullYear());
+          </script>
+      </h4>
+    </center>
+  </body>
+
+  <script>
+    let parseTime = d3.timeParse("%Y-%m");
+    let fileData;
+    let chartData;
+    let svg;
+    let dates;
+    let currentDate;
+
+    const dateSliderChanged = () => {
+      setCurrentDate();
+      loadData();
+      createChart();
+    }
+
+    const setCurrentDate = () => {
+      const sliderValue = document.getElementById('dateSlider').value;
+      console.log(sliderValue);
+      currentDate = new Date(dates[sliderValue]);
+      console.log(`currentDate is ${currentDate}`);
+      // currentDateExtent = [null, null];
+      // if (sliderValue == (dates.length - 1)) {
+      //   currentDateExtent[0] = new Date(dates[sliderValue - 2]);
+      //   currentDateExtent[1] = new Date(dates[sliderValue]);
+      // } else if (sliderValue == 0) {
+      //   currentDateExtent[0] = new Date(dates[0]);
+      //   currentDateExtent[0] = new Date(dates[2]);
+      // } else {
+      //   currentDateExtent[0] = new Date(dates[sliderValue - 1]);
+      //   currentDateExtent[1] = new Date(dates[sliderValue + 1]);
+      // }
+      // console.log(currentDateExtent);
+    }
+
+    const removeSpaces = (str) => {
+      return str.replace(/\s+/g, '');
+    };
+
+    const loadData = (date) => {
+      // fileData.forEach(d => {console.log(`${d.date}: ${d.date.getUTCFullYear()}  ${d.date.getUTCMonth()}` )});
+      // chartData = fileData.filter(d => (d.date.getUTCFullYear() == year && d.date.getUTCMonth() == month) )
+      chartData = fileData.filter(d => (d.date.getTime() === currentDate.getTime()));
+      // chartData = fileData.filter(d => (d.date.getTime() >= currentDateExtent[0].getTime() && d.date.getTime() <= currentDateExtent[1].getTime()));
+
+      console.log(chartData);
+    };
+
+    const createChart = () => {
+      d3.select('#chart').selectAll('*').remove();
+
+      const height = 500;
+      const width = document.getElementById('chart').clientWidth;
+      const margin = ({top: 20, right: 20, bottom: 30, left: 20});
+      const padding = 1;
+      const radius = 2.5;
+      
+      const svg = d3.select('#chart').append("svg")
+        .attr("width", width)
+        .attr("height", height);
+      
+      const y = d3.scaleUtc()
+        .domain(d3.extent(chartData, d => d.date))
+        .range([margin.top, height - margin.bottom]);
+
+      const x = d3.scaleLog()
+        .domain(d3.extent(chartData, d => d.rmax))
+        .range([margin.left, width - margin.right]);
+      // const x = d3.scaleLinear()
+      //   .domain(d3.extent(chartData, d => d.rmax))
+      //   .range([margin.left, width - margin.right])
+        
+      const xAxis = g => g
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickSizeOuter(0))
+      
+      // const yAxis = g => g
+      //   .attr("transform", `translate(${margin.left},0)`)
+      //   .call(d3.axisLeft(y).tickSizeOuter(0));
+      
+      svg.append("g")
+        .call(xAxis);
+
+      // svg.append("g")
+      //   .call(yAxis);
+      
+      // const dodge = (data, radius) => {
+      //   const radius2 = radius ** 2;
+      //   const circles = data.map(d => ({x: x(d.rmax), data: d})).sort((a, b) => a.x - b.x);
+      //   const epsilon = 1e-3;
+      //   let head = null, tail = null;
+
+      //   // Returns true if circle ⟨x,y⟩ intersects with any circle in the queue.
+      //   function intersects(x, y) {
+      //     let a = head;
+      //     while (a) {
+      //       if (radius2 - epsilon > (a.x - x) ** 2 + (a.y - y) ** 2) {
+      //         return true;
+      //       }
+      //       a = a.next;
+      //     }
+      //     return false;
+      //   }
+
+      //   // Place each circle sequentially.
+      //   for (const b of circles) {
+
+      //     // Remove circles from the queue that can’t intersect the new circle b.
+      //     while (head && head.x < b.x - radius2) head = head.next;
+
+      //     // Choose the minimum non-intersecting tangent.
+      //     if (intersects(b.x, b.y = 0)) {
+      //       let a = head;
+      //       b.y = Infinity;
+      //       do {
+      //         let y = a.y + Math.sqrt(radius2 - (a.x - b.x) ** 2);
+      //         if (y < b.y && !intersects(b.x, y)) b.y = y;
+      //         a = a.next;
+      //       } while (a);
+      //     }
+
+      //     // Add b to the queue.
+      //     b.next = null;
+      //     if (head === null) head = tail = b;
+      //     else tail = tail.next = b;
+      //   }
+
+      //   return circles;
+      // }
+
+      const dodge = (data, radius) => {
+        const radius2 = radius ** 2;
+        const circles = data.map(d => ({x: x(d.rmax), data: d})).sort((a, b) => a.x - b.x);
+        const epsilon = 1e-3;
+        let head = null, tail = null;
+
+        // Returns true if circle ⟨x,y⟩ intersects with any circle in the queue.
+        function intersects(x, y) {
+          let a = head;
+          while (a) {
+            if (radius2 - epsilon > (a.x - x) ** 2 + (a.y - y) ** 2) {
+              return true;
+            }
+            a = a.next;
+          }
+          return false;
+        }
+
+        // Place each circle sequentially.
+        for (const b of circles) {
+
+          // Remove circles from the queue that can’t intersect the new circle b.
+          while (head && head.x < b.x - radius2) head = head.next;
+
+          // Choose the minimum non-intersecting tangent.
+          if (intersects(b.x, b.y = 0)) {
+            let a = head;
+            b.y = Infinity;
+            do {
+              let y1 = a.y + Math.sqrt(radius2 - (a.x - b.x) ** 2);
+              let y2 = a.y - Math.sqrt(radius2 - (a.x - b.x) ** 2);
+              if (Math.abs(y1) < Math.abs(b.y) && !intersects(b.x, y1)) b.y = y1;
+              if (Math.abs(y2) < Math.abs(b.y) && !intersects(b.x, y2)) b.y = y2;
+              a = a.next;
+            } while (a);
+          }
+
+          // Add b to the queue.
+          b.next = null;
+          if (head === null) head = tail = b;
+          else tail = tail.next = b;
+        }
+
+        console.log(circles);
+        return circles;
+      };
+
+      svg.append("g")
+        .selectAll("circle")
+        .data(dodge(chartData, radius * 2 + padding))
+        .join("circle")
+          .attr("cx", d => d.x)
+          // .attr("cy", d => y(d.data.date) + d.y)
+          .attr("cy", d => height / 2 + d.y)
+          // .attr("cy", d => height - margin.bottom - radius - padding - d.y)
+          .attr("r", radius)
+          .attr("fill", d => d.data.site.includes("Oak Ridge National Laboratory") ? "green" : "black")
+          .attr("stroke", d => d.data.site.includes("Oak Ridge National Laboratory") ? "orange" : "none")
+        .append("title")
+          .text(d => `Site: ${d.data.site}\nCountry: ${d.data.country}\nComputer: ${d.data.computer}\nRMax :${d.data.rmax}`);
+
+      svg.append("g")
+        .append("text")
+        .style("text-anchor", "middle")
+        .style("font-size", 12)
+        .style("font-family", "sans-serif")
+        .style("font-weight", "bold")
+        .style("fill", "black")
+        .attr("x", width/2)
+        .attr("y", 14)
+        .text(`Top500 Rankings for ${d3.timeFormat('%Y-%m')(currentDate)}`);
+
+    };
+        
+    d3.csv(
+      "output.csv",
+      ({
+        date,
+        rank,
+        computer,
+        site,
+        rmax,
+        // rpeak,
+        manufacturer,
+        // name,
+        // segment,
+        country,
+        // continent,
+        // power,
+        // region,
+      }) => ({
+        date: parseTime(date),
+        rank: +rank ,
+        computer: computer,
+        site: site,
+        rmax: +rmax,
+        // rpeak: +rpeak,
+        manufacturer: manufacturer,
+        // name: name,
+        // segment: segment,
+        country: country,
+        // continent: continent,
+        // region: region,
+        // power: +power
+      })
+    )
+      .then(function(data) {
+        fileData = data;
+        console.log(fileData);
+
+        dates = [...new Set(fileData.map(d => d.date.getTime()))];
+        dates.sort(d3.ascending);
+        const slider = document.getElementById('dateSlider');
+        slider.min = 0;
+        slider.max = dates.length-1;
+        slider.value = dates.length-1;
+
+        setCurrentDate();
+
+        let countries = [...new Set(fileData.map(d => d.country))];
+        console.log(countries);
+
+        // currentDate = new Date(dates[dates.length-1]);
+
+        loadData();
+        createChart();
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  </script>
+</html>
