@@ -52,8 +52,9 @@
         </select><br/><br/>
         <label for="valueFieldSelect">Value Field: </label>
         <select id="valueFieldSelect" onChange="valueFieldSelectChanged()">
-          <option selected>% of Highest Ranking RMax</option>
+          <option selected>% of RMax for each Ranking</option>
           <option>RMax</option>
+          <option>% of RPeak for each Ranking</option>
           <option>RPeak</option>
           <!-- <!-- <option>Rank</option> --> -->
           <!-- <option>Processors</option> -->
@@ -84,8 +85,8 @@
     let chartData;
     let titleIDMap;
     let svg;
-    let zGreys;
-    let zPurples;
+    let zNormal;
+    let zHover;
     let currentHighlightArea;
     // const highlightColor = "#1E8449";
     const highlightColor = "dodgerblue"
@@ -133,14 +134,14 @@
         const areaID = titleIDMap.get(currentHighlightArea);
         svg.select(`.areaPath#${areaID}`)
           .transition().duration(500)
-          .attr("fill", d => zGreys(d.sum));
+          .attr("fill", d => zNormal(d.sum));
       }
 
       if (selectedHighlightArea != 'Choose Highlight Area') {
         const areaID = titleIDMap.get(selectedHighlightArea);
         svg.select(`.areaPath#${areaID}`)
           .transition().duration(500)
-          .attr("fill", d => zPurples(d.sum));
+          .attr("fill", d => zHover(d.sum));
           // .attr("fill", "#1E8449");
         currentHighlightArea = selectedHighlightArea;
       } else {
@@ -202,14 +203,15 @@
       createChart();
     };
 
-    
-
     const loadData = () => {
       const selectedAreaField = getSelectedAreaField().toLowerCase();
       const getTitle = d => d[selectedAreaField];
       let selectedValueField = getSelectedValueField().toLowerCase();
-      if (selectedValueField === '% of highest ranking rmax') {
-        selectedValueField = 'awesomeness';
+      if (selectedValueField === '% of rmax for each ranking') {
+        selectedValueField = 'percentRmax';
+      }
+      if (selectedValueField === '% of rpeak for each ranking') {
+        selectedValueField = 'percentRpeak';
       }
       const getMetric = d => d[selectedValueField];
       // const getMetric = d => d.awesomeness;
@@ -228,14 +230,18 @@
 
       // make a new metric that is percent of highest rmax for ranking
       dateGroups.forEach(dateGroup => {
-        const maxRmax = d3.max(dateGroup.values, d => d.rmax);
+        const sumRmax = d3.sum(dateGroup.values, d => d.rmax);
+        const sumRpeak = d3.sum(dateGroup.values, d => d.rpeak);
+        // const maxRmax = d3.max(dateGroup.values, d => d.rmax);
         dateGroup.values.forEach(v => {
-          const percentMax = (v.rmax / maxRmax) * 100.;
-          v['awesomeness'] = percentMax;
+          const percentRmax = (v.rmax / sumRmax) * 100.;
+          v['percentRmax'] = percentRmax;
+          const percentRpeak = (v.rpeak / sumRpeak) * 100.;
+          v['percentRpeak'] = percentRpeak;
         });
       });
 
-      console.log(dateGroups);
+      // console.log(dateGroups);
 
       chartData = [];
       let titles = new Set;
@@ -257,7 +263,7 @@
         });
         Object.assign(chartData, {titles: Array.from(titles)});
       });
-      console.log(chartData);
+      // console.log(chartData);
 
       const getRandomInt = (min, max) => {
         min = Math.ceil(min);
@@ -313,10 +319,10 @@
         // .x0(d => x(d[0]))
         // .x1(d => x(d[1]));
 
-      zGreys = d3.scaleSequentialSqrt(t => d3.interpolateGreys((t + 0.5) / 2))
+      zNormal = d3.scaleSequentialSqrt(t => d3.interpolateBlues((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
 
-      zPurples = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
+      zHover = d3.scaleSequentialSqrt(t => d3.interpolateOranges((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
       
       const x = d3.scaleTime()
@@ -331,6 +337,13 @@
         .range([height - margin.top, margin.bottom]);
 
       svg = d3.select('#chart').append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      svg.append("defs")
+        .append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
         .attr("width", width)
         .attr("height", height);
 
@@ -363,19 +376,20 @@
         .selectAll("path")
         .data(series)
         .join("path")
-          .attr("fill", d => zGreys(d.sum))
+          .attr("fill", d => zNormal(d.sum))
           .attr("d", area)
+          .attr("clip-path", `url(#clip)`)
           .attr("class", "areaPath")
           .attr("id", d => `${titleIDMap.get(d.key)}`)
           .on("mouseover", d => {
             console.log(d3.select(`#${titleIDMap.get(d.key)}`));
-            d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zPurples(d.sum));
+            d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zHover(d.sum));
             // d3.select(this).attr("fill", "orange");
-            // d3.select(this).select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zPurples(d.sum));
+            // d3.select(this).select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zHover(d.sum));
           })
           .on("mouseout", d => {
-            d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zGreys(d.sum));
-            // d3.select(this).attr("fill", zGreys(d.sum));
+            d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zNormal(d.sum));
+            // d3.select(this).attr("fill", zNormal(d.sum));
           })
         .append("title")
           .text(d => d.key);  
@@ -391,28 +405,12 @@
           .attr("x1", d => x(d.date))
           .attr("y2", height-margin.bottom)
           .attr("x2", d => x(d.date));
-          // .attr("x1", 0)
-          // .attr("y1", d => y(d.date))
-          // .attr("x2", width-margin.right)
-          // .attr("y2", d => y(d.date));
     };
         
     d3.csv(
       "output.csv",
       ({
-        date,
-        rank,
-        computer,
-        site,
-        rmax,
-        rpeak,
-        manufacturer,
-        name,
-        segment,
-        country,
-        continent,
-        power,
-        region,
+        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region,
       }) => ({
         date: parseTime(date),
         rank: 501 - (+rank) ,
