@@ -56,6 +56,7 @@
           <option>RMax</option>
           <option>% of RPeak for each Ranking</option>
           <option>RPeak</option>
+          <option>Count</option>
           <!-- <!-- <option>Rank</option> --> -->
           <!-- <option>Processors</option> -->
           <option>Power</option>
@@ -63,7 +64,11 @@
         <label for="highlightAreaSelect">Highlight Area: </label>
         <select id="highlightAreaSelect" onChange="highlightAreaSelectChanged()"></select><br/><br/>
         <label for="countryFilterSelect">Country Filter: </label>
-        <select id="countryFilterSelect" onChange="countryFilterSelectChanged()"></select>
+        <select id="countryFilterSelect" onChange="countryFilterSelectChanged()"></select><br/><br/>
+        <label for="startDateRange">Start Date: </label>
+        <input type="range" id="startDateRange" onChange="startDateRangeChanged()"/>&nbsp;&nbsp;
+        <label for="endDateRange">End Date: </label>
+        <input type="range" id="endDateRange" onChange="endDateRangeChanged()" />
       </p>
       <hr/>
     </div>
@@ -188,7 +193,7 @@
       }
 
       const countries = [...new Set(fileData.map(d => d.country))];
-      console.log(countries);
+      // console.log(countries);
       countries.sort(d3.ascending);
       countries.unshift('All');
       countries.forEach(country => {
@@ -200,6 +205,55 @@
       // const select = document.getElementById('countryFilterSelect');
       // const selectedCountry = select.options[select.selectedIndex].text;
       // console.log(`selectedCountry: ${selectedCountry}`);
+      loadData();
+      createChart();
+    };
+
+    const setupDateSliders = () => {
+      const startSlider = document.getElementById('startDateRange');
+      const endSlider = document.getElementById('endDateRange');
+      startSlider.min = 0;
+      startSlider.max = dates.length - 1;
+      startSlider.value = 0;
+      endSlider.min = 0;
+      endSlider.max = dates.length - 1;
+      endSlider.value = dates.length - 1;
+    }
+
+    const startDateRangeChanged = () => {
+      const startSlider = document.getElementById('startDateRange');
+      const endSlider = document.getElementById('endDateRange');
+      console.log(`startDate: ${dates[startSlider.value]}`);
+      const startSliderValue = +startSlider.value;
+      const endSliderValue = +endSlider.value;
+      if (startSliderValue + 10 > endSliderValue) {
+        const newEndValue = startSliderValue + 10;
+        if (newEndValue > dates.length - 1) {
+          endSlider.value = dates.length - 1;
+          startSlider.value = endSlider.value - 10;
+        } else {
+          endSlider.value = newEndValue;
+        }
+      }
+      loadData();
+      createChart();
+    };
+
+    const endDateRangeChanged = () => {
+      const startSlider = document.getElementById('startDateRange');
+      const endSlider = document.getElementById('endDateRange');
+      console.log(`endDate: ${dates[endSlider.value]}`);
+      const startSliderValue = +startSlider.value;
+      const endSliderValue = +endSlider.value;
+      if (endSliderValue - 10 < startSliderValue) {
+        const newStartValue = endSliderValue - 10;
+        if (newStartValue < 0) {
+          startSlider.value = 0;
+          endSlider.value = 10;
+        } else {
+          startSlider.value = newStartValue;
+        }
+      }
       loadData();
       createChart();
     };
@@ -218,12 +272,17 @@
       // const getMetric = d => d.awesomeness;
       // const getTitle = d => d.country;
 
+      // filter for current date range 
+      const startDate = dates[document.getElementById('startDateRange').value];
+      const endDate = dates[document.getElementById('endDateRange').value];
+      const filteredFileData = fileData.filter(d => (d.date.getTime() >= startDate.getTime() && d.date.getTime() <= endDate.getTime()));
+
       let dateGroups;
       const selectedCountryFilter = getSelectedCountryFilter();
       if (selectedCountryFilter != 'All') {
-        dateGroups = d3.nest().key(d => d.date).entries(fileData.filter(d => d.country === selectedCountryFilter));
+        dateGroups = d3.nest().key(d => d.date).entries(filteredFileData.filter(d => d.country === selectedCountryFilter));
       } else {
-        dateGroups = d3.nest().key(d => d.date).entries(fileData);
+        dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
       }
 
       // const dateGroups = d3.nest().key(d => d.date).entries(fileData);
@@ -281,7 +340,7 @@
         titleIDMap.set(title, titleID);
       });
 
-      console.log(titleIDMap);
+      // console.log(titleIDMap);
     };
 
 
@@ -341,10 +400,13 @@
         .attr("width", width)
         .attr("height", height);
 
+      const startDate = dates[document.getElementById('startDateRange').value];
+      const endDate = dates[document.getElementById('endDateRange').value];
+      const filteredDates = dates.filter(d => (d.getTime() >= startDate.getTime() && d.getTime() <= endDate.getTime()));
       svg.append("g")
         .attr("transform", `translate(0, ${height - margin.bottom})`)
         .call(d3.axisBottom(x)
-          .tickValues(dates)
+          .tickValues(filteredDates)
           .tickSize(-(height - margin.bottom - margin.top))
           .tickFormat(d => d.toLocaleString(undefined, {month: "short", year: "numeric"})))
         .call(g => g.select(".domain").remove())
@@ -433,7 +495,11 @@
     )
       .then(function(data) {
         fileData = data;
-        dates = [...new Set(fileData.map(d => d.date))];
+        dates = [...new Set(fileData.map(d => d.date.getTime()))];
+        dates = dates.map(d => new Date(d));
+        dates.sort(d3.ascending);
+        console.log(dates);
+        setupDateSliders();
         populateCountryFilterSelect();
         loadData();
         createChart();
