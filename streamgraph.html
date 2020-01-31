@@ -261,6 +261,7 @@
     const loadData = () => {
       const selectedAreaField = getSelectedAreaField().toLowerCase();
       const getTitle = d => d[selectedAreaField];
+      
       let selectedValueField = getSelectedValueField().toLowerCase();
       if (selectedValueField === '% of rmax for each ranking') {
         selectedValueField = 'percentRmax';
@@ -323,7 +324,7 @@
         });
         Object.assign(chartData, {titles: Array.from(titles)});
       });
-      // console.log(chartData);
+      console.log(chartData);
 
       const getRandomInt = (min, max) => {
         min = Math.ceil(min);
@@ -340,7 +341,7 @@
         titleIDMap.set(title, titleID);
       });
 
-      // console.log(titleIDMap);
+      console.log(titleIDMap);
     };
 
 
@@ -439,6 +440,40 @@
       //   .call(g => g.selectAll(".tick text").attr("fill", "gray"));
       //   // .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
 
+      let tooltip = svg.append("g");
+
+      const callout = (g, value) => {
+        if (!value) return g.style("display", "none");
+
+        g.style("display", null)
+          .style("pointer-events", "none")
+          .style("font", "10px sans-serif");
+
+        const path = g.selectAll("path")
+          .data([null])
+          .join("path")
+            .attr("fill", "lightgray")
+            .attr("fill-opacity", 0.6)
+            .attr("stroke", "gray");
+
+        const text = g.selectAll("text")
+          .data([null])
+          .join("text")
+          .call(text => text
+            .selectAll("tspan")
+            .data((value + "").split(/\n/))
+            .join("tspan")
+              .attr("x", 0)
+              .attr("y", (d, i) => `${i * 1.1}em`)
+              .style("font-weight", (_, i) => i ? null : "bold")
+              .text(d => d));
+
+        const {x, y, width: w, height: h} = text.node().getBBox();
+
+        text.attr("transform", `translate(${-w / 2},${15 - y})`);
+        path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`);
+      }
+
       svg.append("g")
         .selectAll("path")
         .data(series)
@@ -447,18 +482,30 @@
           .attr("d", area)
           .attr("class", "areaPath")
           .attr("id", d => `${titleIDMap.get(d.key)}`)
-          .on("mouseover", d => {
+          // .on("mouseover touchover", d => {
+          .on("touchmove mousemove", d => {
             // console.log(d3.select(`#${titleIDMap.get(d.key)}`));
             d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zHover(d.sum));
             // d3.select(this).attr("fill", "orange");
             // d3.select(this).select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zHover(d.sum));
+            const mousePosition = d3.mouse(d3.event.target);
+            // console.log(d3.mouse(d3.event.target));
+            tooltip.attr("transform", `translate(${mousePosition[0]},${mousePosition[1]})`)
+              .call(callout, `${d.key}`);
+            tooltip.raise();
+
           })
-          .on("mouseout", d => {
+          .on("touchend mouseleave", d => {
+          // .on("mouseout touchout", d => {
             d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zNormal(d.sum));
             // d3.select(this).attr("fill", zNormal(d.sum));
-          })
-        .append("title")
-          .text(d => d.key);  
+            tooltip.call(callout, null);
+          });
+        // .append("title")
+        //   .text(d => d.key);  
+
+      
+
               
       // svg.append("g")
       //   .selectAll("rankingLine")
