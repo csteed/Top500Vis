@@ -260,7 +260,13 @@
 
     const loadData = () => {
       const selectedAreaField = getSelectedAreaField().toLowerCase();
-      const getTitle = d => d[selectedAreaField];
+      let getTitle;
+      if (selectedAreaField === 'computer') {
+        // getTitle = d => d[selectedAreaField];
+        getTitle = d => `${d[selectedAreaField]} : ${d.site}`;
+      } else {
+        getTitle = d => d[selectedAreaField];
+      }
       
       let selectedValueField = getSelectedValueField().toLowerCase();
       if (selectedValueField === '% of rmax for each ranking') {
@@ -270,8 +276,6 @@
         selectedValueField = 'percentRpeak';
       }
       const getMetric = d => d[selectedValueField];
-      // const getMetric = d => d.awesomeness;
-      // const getTitle = d => d.country;
 
       // filter for current date range 
       const startDate = dates[document.getElementById('startDateRange').value];
@@ -286,9 +290,6 @@
         dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
       }
 
-      // const dateGroups = d3.nest().key(d => d.date).entries(fileData);
-      console.log(dateGroups);
-
       // make a new metric that is percent of highest rmax for ranking
       dateGroups.forEach(dateGroup => {
         const sumRmax = d3.sum(dateGroup.values, d => d.rmax);
@@ -301,8 +302,6 @@
           v['percentRpeak'] = percentRpeak;
         });
       });
-
-      // console.log(dateGroups);
 
       chartData = [];
       let titles = new Set;
@@ -344,7 +343,6 @@
       console.log(titleIDMap);
     };
 
-
     const createChart = () => {
       d3.select('#chart').selectAll('*').remove();
 
@@ -353,23 +351,15 @@
         .offset(d3.stackOffsetWiggle)
         .order(d3.stackOrderInsideOut)
         .value((d, key) => d.sites[key] || 0);
-        // .value((d, key) => {console.log(d); return d.sites[key] || 0;});
-
-      // console.log(stack);
 
       const series = stack(chartData);
       for (const s of series) {
         s.sum = d3.sum(s, d => d[1] - d[0]);
       }
-      // console.log(series);
 
       const margin = ({top: 20, right: 40, bottom: 60, left: 20});
       const width = document.getElementById('chart').clientWidth;
       const height = width / 3.8;
-      // const height = 560;
-      // const width = height * 3.8;
-      // const width = 700;
-      // const height = width * 4.5;
 
       const area = d3.area()
         .curve(d3.curveBasis)
@@ -380,10 +370,10 @@
         // .x0(d => x(d[0]))
         // .x1(d => x(d[1]));
 
-      zNormal = d3.scaleSequentialSqrt(t => d3.interpolateBlues((t + 0.5) / 2))
+      zNormal = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
 
-      zHover = d3.scaleSequentialSqrt(t => d3.interpolateOranges((t + 0.5) / 2))
+      zHover = d3.scaleSequentialSqrt(t => d3.interpolateGreens((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
       
       const x = d3.scaleTime()
@@ -440,39 +430,48 @@
       //   .call(g => g.selectAll(".tick text").attr("fill", "gray"));
       //   // .call(g => g.selectAll(".tick text").attr("fill", "gray").attr("x", null).attr("dy", "-0.6em"));
 
-      let tooltip = svg.append("g");
+      // let tooltip = svg.append("g");
 
-      const callout = (g, value) => {
-        if (!value) return g.style("display", "none");
+      // const callout = (g, value) => {
+      //   if (!value) return g.style("display", "none");
 
-        g.style("display", null)
-          .style("pointer-events", "none")
-          .style("font", "10px sans-serif");
+      //   g.style("display", null)
+      //     .style("pointer-events", "none")
+      //     .style("font", "10px sans-serif");
 
-        const path = g.selectAll("path")
-          .data([null])
-          .join("path")
-            .attr("fill", "lightgray")
-            .attr("fill-opacity", 0.6)
-            .attr("stroke", "gray");
+      //   const path = g.selectAll("path")
+      //     .data([null])
+      //     .join("path")
+      //       .attr("fill", "lightgray")
+      //       .attr("fill-opacity", 0.6)
+      //       .attr("stroke", "gray");
 
-        const text = g.selectAll("text")
-          .data([null])
-          .join("text")
-          .call(text => text
-            .selectAll("tspan")
-            .data((value + "").split(/\n/))
-            .join("tspan")
-              .attr("x", 0)
-              .attr("y", (d, i) => `${i * 1.1}em`)
-              .style("font-weight", (_, i) => i ? null : "bold")
-              .text(d => d));
+      //   const text = g.selectAll("text")
+      //     .data([null])
+      //     .join("text")
+      //     .call(text => text
+      //       .selectAll("tspan")
+      //       .data((value + "").split(/\n/))
+      //       .join("tspan")
+      //         .attr("x", 0)
+      //         .attr("y", (d, i) => `${i * 1.1}em`)
+      //         .style("font-weight", (_, i) => i ? null : "bold")
+      //         .text(d => d));
 
-        const {x, y, width: w, height: h} = text.node().getBBox();
+      //   const {x, y, width: w, height: h} = text.node().getBBox();
 
-        text.attr("transform", `translate(${-w / 2},${15 - y})`);
-        path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`);
-      }
+      //   text.attr("transform", `translate(${-w / 2},${15 - y})`);
+      //   path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`);
+      // }
+
+      const hoverText = svg.append("text")
+        .style("text-anchor", "end")
+        .style("font", "10px sans-serif")
+        .style("display", "none")
+        .attr("fill", "darkslategray")
+        .attr("x", width - margin.right)
+        .attr("y", margin.top - 8)
+        .text("Hover Text");
 
       svg.append("g")
         .selectAll("path")
@@ -482,24 +481,19 @@
           .attr("d", area)
           .attr("class", "areaPath")
           .attr("id", d => `${titleIDMap.get(d.key)}`)
-          // .on("mouseover touchover", d => {
           .on("touchmove mousemove", d => {
-            // console.log(d3.select(`#${titleIDMap.get(d.key)}`));
             d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zHover(d.sum));
-            // d3.select(this).attr("fill", "orange");
-            // d3.select(this).select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zHover(d.sum));
-            const mousePosition = d3.mouse(d3.event.target);
-            // console.log(d3.mouse(d3.event.target));
-            tooltip.attr("transform", `translate(${mousePosition[0]},${mousePosition[1]})`)
-              .call(callout, `${d.key}`);
-            tooltip.raise();
-
+            // const mousePosition = d3.mouse(d3.event.target);
+            // tooltip.attr("transform", `translate(${mousePosition[0]},${mousePosition[1]})`)
+            //   .call(callout, `${d.key}`);
+            // tooltip.raise();
+            hoverText.text(`${d.key}`)
+              .style("display", null);
           })
           .on("touchend mouseleave", d => {
-          // .on("mouseout touchout", d => {
             d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zNormal(d.sum));
-            // d3.select(this).attr("fill", zNormal(d.sum));
-            tooltip.call(callout, null);
+            // tooltip.call(callout, null);
+            hoverText.style("display", "none");
           });
         // .append("title")
         //   .text(d => d.key);  
@@ -523,7 +517,7 @@
     d3.csv(
       "output.csv",
       ({
-        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region,
+        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region
       }) => ({
         date: parseTime(date),
         rank: 501 - (+rank) ,
