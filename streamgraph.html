@@ -25,56 +25,62 @@
     </style>
   </head>
   <body>
-    <!-- <div class="top"> -->
-      <h2>Supercomputing Top500 Streamgraph Visualization</h2>
-      <h3>Description:</h3>
-      <p>
-        This webpage presents selected statistics from the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a streamgraph chart based on the style of <a href="http://leebyron.com/streamgraph/" target="_blank">Lee Byron <i>et al</i></a>.
-      </p>
-      <ul>
-        <li><b>Area Field:</b> Select the field to assign to stream areas</li>
-        <li><b>Value Field:</b> Select the value for sizing areas</li>
-        <li><b>Highlight Area:</b> Select specific area to highlight</li>
-        <li><b>White Horizontal Lines:</b> Show the dates of Top500 rankings</li>
-        <li><b>Area Colors:</b> Encode the value sum for each ranking of the area</li>
-      </ul>
-      <h3>Controls:</h3>
-      <p>
-        <label for="areaFieldSelect">Area Field: </label>
-        <select id="areaFieldSelect" onChange="areaFieldSelectChanged()">
-          <option selected>Country</option>
-          <option>Continent</option>
-          <option>Computer</option>
-          <option>Manufacturer</option>
-          <option>Region</option>
-          <option>Segment</option>
-          <option>Site</option>
-        </select><br/><br/>
-        <label for="valueFieldSelect">Value Field: </label>
-        <select id="valueFieldSelect" onChange="valueFieldSelectChanged()">
-          <option selected>% of RMax for each Ranking</option>
-          <option>RMax</option>
-          <option>% of RPeak for each Ranking</option>
-          <option>RPeak</option>
-          <option>Count</option>
-          <!-- <!-- <option>Rank</option> --> -->
-          <!-- <option>Processors</option> -->
-          <option>Power</option>
-        </select><br/><br/>
-        <label for="highlightAreaSelect">Highlight Area: </label>
-        <select id="highlightAreaSelect" onChange="highlightAreaSelectChanged()"></select><br/><br/>
-        <label for="countryFilterSelect">Country Filter: </label>
-        <select id="countryFilterSelect" onChange="countryFilterSelectChanged()"></select><br/><br/>
-        <label for="startDateRange">Start Date: </label>
-        <input type="range" id="startDateRange" onChange="startDateRangeChanged()"/>&nbsp;&nbsp;
-        <label for="endDateRange">End Date: </label>
-        <input type="range" id="endDateRange" onChange="endDateRangeChanged()" />
-      </p>
-      <hr/>
-    <!-- </div> -->
-    <!-- <div class="main"> -->
-      <div id="chart"></div>
-    <!-- </div> -->
+    <h2>Supercomputing Top500 Streamgraph Visualization</h2>
+    <h3>Description:</h3>
+    <p>
+      This webpage presents selected statistics from the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a streamgraph chart based on the style of <a href="http://leebyron.com/streamgraph/" target="_blank">Lee Byron <i>et al</i></a>.
+    </p>
+    <ul>
+      <li><b>Area Field:</b> Select the field to assign to stream areas</li>
+      <li><b>Value Field:</b> Select the value for sizing areas</li>
+      <li><b>Highlight Area:</b> Select specific area to highlight</li>
+      <li><b>White Horizontal Lines:</b> Show the dates of Top500 rankings</li>
+      <li><b>Area Colors:</b> Encode the value sum for each ranking of the area</li>
+    </ul>
+    <h3>Controls:</h3>
+    <p>
+      <label for="areaFieldSelect">Area Field: </label>
+      <select id="areaFieldSelect" onChange="areaFieldSelectChanged()">
+        <option selected>Country</option>
+        <option>Continent</option>
+        <option>Computer</option>
+        <option>Manufacturer</option>
+        <option>Region</option>
+        <option>Segment</option>
+        <option>Site</option>
+      </select><br/><br/>
+      <label for="valueFieldSelect">Value Field: </label>
+      <select id="valueFieldSelect" onChange="valueFieldSelectChanged()">
+        <option selected>% of RMax for each Ranking</option>
+        <option>RMax</option>
+        <option>% of RPeak for each Ranking</option>
+        <option>RPeak</option>
+        <option>Count</option>
+        <!-- <!-- <option>Rank</option> --> -->
+        <!-- <option>Processors</option> -->
+        <option>Power</option>
+      </select><br/><br/>
+      <label for="filterFieldSelect">Filter Field: </label>
+      <select id="filterFieldSelect" onChange="filterFieldSelectChanged()">
+        <option selected>Country</option>
+        <option>Continent</option>
+        <option>Region</option>
+        <option>Manufacturer</option>
+        <option>Segment</option>
+        <option>Site</option>
+      </select>&nbsp;&nbsp;&nbsp;
+      <label for="filterValueSelect">Filter Value: </label>
+      <select id="filterValueSelect" onChange="filterValueSelectChanged()">
+      </select><br/><br/>
+      <label for="startDateRange">Start Date: </label>
+      <input type="range" id="startDateRange" onChange="startDateRangeChanged()"/>&nbsp;&nbsp;
+      <label for="endDateRange">End Date: </label>
+      <input type="range" id="endDateRange" onChange="endDateRangeChanged()" />
+    </p>
+    <hr/>
+
+    <div id="chart"></div>
+
     <center>
       <h4>&copy; <a href="https://www.ornl.gov">Oak Ridge National Laboratory</a>
           <script type="text/javascript">
@@ -102,6 +108,16 @@
       return str.replace(/\s+/g, '');
     };
 
+    const getSelectedFilterField = () => {
+      const select = document.getElementById('filterFieldSelect');
+      return select.options[select.selectedIndex].text;
+    }
+
+    const getSelectedFilterValue = () => {
+      const select = document.getElementById('filterValueSelect');
+      return select.options[select.selectedIndex].text;
+    }
+
     const getSelectedAreaField = () => {
       const select = document.getElementById('areaFieldSelect');
       return select.options[select.selectedIndex].text;
@@ -122,10 +138,38 @@
       return select.options[select.selectedIndex].text;
     }
 
+    const filterFieldSelectChanged = () => {
+      const selectedFilterField = getSelectedFilterField().toLowerCase();
+      // console.log(`Selected Filter Field is ${selectedFilterField}`);
+
+      // get values to popular the filter value select options
+      const values = [...new Set(fileData.map(d => d[selectedFilterField]))];
+      values.sort(d3.ascending);
+      // console.log(values);
+
+      // clear all current filter value select options
+      const select = document.getElementById('filterValueSelect');
+      for (let i = select.options.length - 1; i >= 0; i--) {
+        select.remove(i);
+      }
+
+      values.unshift('All');
+      values.forEach(value => {
+        select.options[select.options.length] = new Option(value);
+      });
+    };
+
+    const filterValueSelectChanged = () => {
+      const selectedFilterValue = getSelectedFilterValue();
+      console.log(`Selected Filter Value is ${selectedFilterValue}`);
+      loadData();
+      createChart();
+    }
+
     const areaFieldSelectChanged = () => {
       loadData();
       createChart();
-      populateHighlightAreaSelect();
+      // populateHighlightAreaSelect();
     };
 
     const valueFieldSelectChanged = () => {
@@ -133,81 +177,64 @@
       createChart();
     };
 
-    const highlightAreaSelectChanged = () => {
-      const selectedHighlightArea = getSelectedHighlightArea();
+    // const highlightAreaSelectChanged = () => {
+    //   const selectedHighlightArea = getSelectedHighlightArea();
 
-      if (currentHighlightArea) {
-        const areaID = titleIDMap.get(currentHighlightArea);
-        svg.select(`.areaPath#${areaID}`)
-          .transition().duration(500)
-          .attr("fill", d => zNormal(d.sum));
-      }
+    //   if (currentHighlightArea) {
+    //     const areaID = titleIDMap.get(currentHighlightArea);
+    //     svg.select(`.areaPath#${areaID}`)
+    //       .transition().duration(500)
+    //       .attr("fill", d => zNormal(d.sum));
+    //   }
 
-      if (selectedHighlightArea != 'Choose Highlight Area') {
-        const areaID = titleIDMap.get(selectedHighlightArea);
-        svg.select(`.areaPath#${areaID}`)
-          .transition().duration(500)
-          .attr("fill", d => zHover(d.sum));
-          // .attr("fill", "#1E8449");
-        currentHighlightArea = selectedHighlightArea;
-      } else {
-        currentHighlightArea = null;
-      }
+    //   if (selectedHighlightArea != 'Choose Highlight Area') {
+    //     const areaID = titleIDMap.get(selectedHighlightArea);
+    //     svg.select(`.areaPath#${areaID}`)
+    //       .transition().duration(500)
+    //       .attr("fill", d => zHover(d.sum));
+    //     currentHighlightArea = selectedHighlightArea;
+    //   } else {
+    //     currentHighlightArea = null;
+    //   }
+    // };
 
-      // if (selectedHighlightArea === 'Choose Highlight Area') {
-      //   svg.selectAll('.areaPath')
-      //     .attr("fill", d => z(d.sum));
-      // } else {
-      //   svg.selectAll('.areaPath')
-      //     .transition().duration(500)
-      //     .attr("fill", d => d.key === selectedHighlightArea ? "#1E8449" : z(d.sum));
-          
-      // }
-      // const areaID = titleIDMap.get(selectedHighlightArea);
-      // console.log(`highlighing ${selectedHighlightArea} with ID ${areaID}`);
-      // svg.select(`.areaPath#${areaID}`).attr("fill", "green");
-      // svg.select(`.areaPath#${titleIDMap.get("China")}`)
-        // .attr("fill", "green");
-    };
+    // const populateHighlightAreaSelect = () => {
+    //   const select = document.getElementById('highlightAreaSelect');
+    //   for (let i = select.options.length - 1; i >= 0; i--) {
+    //     select.remove(i);
+    //   }
 
-    const populateHighlightAreaSelect = () => {
-      const select = document.getElementById('highlightAreaSelect');
-      for (let i = select.options.length - 1; i >= 0; i--) {
-        select.remove(i);
-      }
+    //   const highlightOptions = [...titleIDMap.keys()];
 
-      const highlightOptions = [...titleIDMap.keys()];
-      // console.log(highlightOptions);
+    //   highlightOptions.sort(d3.ascending);
+    //   highlightOptions.unshift('Choose Highlight Area');
+    //   highlightOptions.forEach(option => {
+    //     select.options[select.options.length] = new Option(option);
+    //   });
+    // };
 
-      highlightOptions.sort(d3.ascending);
-      highlightOptions.unshift('Choose Highlight Area');
-      highlightOptions.forEach(option => {
-        select.options[select.options.length] = new Option(option);
-      });
-    };
+    // const populateCountryFilterSelect = () => {
+    //   const select = document.getElementById('countryFilterSelect');
+    //   for (let i = select.options.length - 1; i >= 0; i--) {
+    //     select.remove(i);
+    //   }
 
-    const populateCountryFilterSelect = () => {
-      const select = document.getElementById('countryFilterSelect');
-      for (let i = select.options.length - 1; i >= 0; i--) {
-        select.remove(i);
-      }
+    //   const countries = [...new Set(fileData.map(d => d.country))];
+    //   // console.log(countries);
+    //   countries.sort(d3.ascending);
+    //   countries.unshift('All');
+    //   countries.forEach(country => {
+    //     select.options[select.options.length] = new Option(country);
+    //   });
+    // };
 
-      const countries = [...new Set(fileData.map(d => d.country))];
-      // console.log(countries);
-      countries.sort(d3.ascending);
-      countries.unshift('All');
-      countries.forEach(country => {
-        select.options[select.options.length] = new Option(country);
-      });
-    };
-
-    const countryFilterSelectChanged = () => {
-      // const select = document.getElementById('countryFilterSelect');
-      // const selectedCountry = select.options[select.selectedIndex].text;
-      // console.log(`selectedCountry: ${selectedCountry}`);
-      loadData();
-      createChart();
-    };
+    // const countryFilterSelectChanged = () => {
+    //   // const select = document.getElementById('countryFilterSelect');
+    //   // const selectedCountry = select.options[select.selectedIndex].text;
+    //   // console.log(`selectedCountry: ${selectedCountry}`);
+    //   loadData();
+    //   createChart();
+    // };
 
     const setupDateSliders = () => {
       const startSlider = document.getElementById('startDateRange');
@@ -277,18 +304,42 @@
       }
       const getMetric = d => d[selectedValueField];
 
-      // filter for current date range 
-      const startDate = dates[document.getElementById('startDateRange').value];
-      const endDate = dates[document.getElementById('endDateRange').value];
-      const filteredFileData = fileData.filter(d => (d.date.getTime() >= startDate.getTime() && d.date.getTime() <= endDate.getTime()));
+      // filter for current date range
+      const startDateIndex = document.getElementById('startDateRange').value;
+      const endDateIndex = document.getElementById('endDateRange').value;
 
-      let dateGroups;
-      const selectedCountryFilter = getSelectedCountryFilter();
-      if (selectedCountryFilter != 'All') {
-        dateGroups = d3.nest().key(d => d.date).entries(filteredFileData.filter(d => d.country === selectedCountryFilter));
+      let filteredFileData;
+      if (startDateIndex == 0 && endDateIndex == (dates.length -1)) {
+        filteredFileData = fileData;
       } else {
-        dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
+        filteredFileData = fileData.filter(d => {
+          return (d.date.getTime() >= dates[startDateIndex].getTime()) &&
+            (d.date.getTime() <= dates[endDateIndex].getTime());
+        });
       }
+
+      const filterField = getSelectedFilterField().toLowerCase();
+      const filterValue = getSelectedFilterValue();
+      console.log(`filterField: ${filterField}  filterValue: ${filterValue}`);
+
+      if (filterValue != 'All') {
+        console.log('filtering field values');
+        filteredFileData = filteredFileData.filter(d => {
+          return d[filterField] == filterValue;
+        });
+        filteredFileData.map(d => console.log(d[filterField]));
+      }
+      console.log(filteredFileData);
+
+
+      // let dateGroups;
+      // const selectedCountryFilter = getSelectedCountryFilter();
+      // if (selectedCountryFilter != 'All') {
+      //   dateGroups = d3.nest().key(d => d.date).entries(filteredFileData.filter(d => d.country === selectedCountryFilter));
+      // } else {
+      //   dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
+      // }
+      const dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
 
       // make a new metric that is percent of highest rmax for ranking
       dateGroups.forEach(dateGroup => {
@@ -536,15 +587,16 @@
     )
       .then(function(data) {
         fileData = data;
+        filterFieldSelectChanged();
         dates = [...new Set(fileData.map(d => d.date.getTime()))];
         dates = dates.map(d => new Date(d));
         dates.sort(d3.ascending);
-        console.log(dates);
+        // console.log(dates);
         setupDateSliders();
-        populateCountryFilterSelect();
+        // populateCountryFilterSelect();
         loadData();
         createChart();
-        populateHighlightAreaSelect();
+        // populateHighlightAreaSelect();
       })
       .catch(function(error) {
         console.log(error);
