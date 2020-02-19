@@ -2,7 +2,8 @@
 <meta charset="utf-8" />
 <html>
   <head>
-    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
+    <script src="js/d3.min.js"></script>
     <style>
       body {
         font: 12px sans-serif;
@@ -516,8 +517,8 @@
       // }
 
       const hoverText = svg.append("text")
-        .style("text-anchor", "end")
-        .style("font", "10px sans-serif")
+        .style("text-anchor", "middle")
+        .style("font", "16px sans-serif")
         .style("display", "none")
         .attr("fill", "darkslategray")
         .attr("x", width - margin.right)
@@ -539,7 +540,8 @@
             //   .call(callout, `${d.key}`);
             // tooltip.raise();
             hoverText.text(`${d.key}`)
-              .style("display", null);
+              .style("display", null)
+              .attr("x", d3.mouse(d3.event.target)[0]);
           })
           .on("touchend mouseleave", d => {
             d3.select(`#${titleIDMap.get(d.key)}`).attr("fill", d => zNormal(d.sum));
