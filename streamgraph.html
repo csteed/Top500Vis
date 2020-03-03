@@ -34,9 +34,11 @@
     <ul>
       <li><b>Area Field:</b> Select the field to assign to stream areas</li>
       <li><b>Value Field:</b> Select the value for sizing areas</li>
-      <li><b>Highlight Area:</b> Select specific area to highlight</li>
-      <li><b>White Horizontal Lines:</b> Show the dates of Top500 rankings</li>
+      <li><b>Filter Field / Value:</b> Only show entries that match the filter field value</li>
+      <li><b>Gray Vertical Lines:</b> Represent the dates of Top500 rankings</li>
       <li><b>Area Colors:</b> Encode the value sum for each ranking of the area</li>
+      <li><b>Start / End Dates:</b> Show only entries in start and end date range</li>
+      <li><b>Rank Filter:</b> Limit the number of entries by rankings</li>
     </ul>
     <h3>Controls:</h3>
     <p>
@@ -77,6 +79,17 @@
       <input type="range" id="startDateRange" onChange="startDateRangeChanged()"/>&nbsp;&nbsp;
       <label for="endDateRange">End Date: </label>
       <input type="range" id="endDateRange" onChange="endDateRangeChanged()" />
+      <br/></br/>
+      <label for="rankFilterSelect">Rank Filter: </label>
+      <select id="rankFilterSelect" onChange="rankFilterSelectChanged()">
+        <option selected>500</option>
+        <option>400</option>
+        <option>300</option>
+        <option>200</option>
+        <option>100</option>
+        <option>50</option>
+        <option>20</option>
+      </select>
     </p>
     <hr/>
 
@@ -139,6 +152,11 @@
       return select.options[select.selectedIndex].text;
     }
 
+    const getSelectedRankFilter = () => {
+      const select = document.getElementById('rankFilterSelect');
+      return +select.options[select.selectedIndex].text;
+    }
+
     const filterFieldSelectChanged = () => {
       const selectedFilterField = getSelectedFilterField().toLowerCase();
       // console.log(`Selected Filter Field is ${selectedFilterField}`);
@@ -167,6 +185,13 @@
       createChart();
     }
 
+    const rankFilterSelectChanged = () => {
+      const selectedRankFilter = getSelectedRankFilter();
+      console.log(`Selected Rank Filter is: ${selectedRankFilter}`);
+      loadData();
+      createChart();
+    }
+
     const areaFieldSelectChanged = () => {
       loadData();
       createChart();
@@ -177,65 +202,6 @@
       loadData();
       createChart();
     };
-
-    // const highlightAreaSelectChanged = () => {
-    //   const selectedHighlightArea = getSelectedHighlightArea();
-
-    //   if (currentHighlightArea) {
-    //     const areaID = titleIDMap.get(currentHighlightArea);
-    //     svg.select(`.areaPath#${areaID}`)
-    //       .transition().duration(500)
-    //       .attr("fill", d => zNormal(d.sum));
-    //   }
-
-    //   if (selectedHighlightArea != 'Choose Highlight Area') {
-    //     const areaID = titleIDMap.get(selectedHighlightArea);
-    //     svg.select(`.areaPath#${areaID}`)
-    //       .transition().duration(500)
-    //       .attr("fill", d => zHover(d.sum));
-    //     currentHighlightArea = selectedHighlightArea;
-    //   } else {
-    //     currentHighlightArea = null;
-    //   }
-    // };
-
-    // const populateHighlightAreaSelect = () => {
-    //   const select = document.getElementById('highlightAreaSelect');
-    //   for (let i = select.options.length - 1; i >= 0; i--) {
-    //     select.remove(i);
-    //   }
-
-    //   const highlightOptions = [...titleIDMap.keys()];
-
-    //   highlightOptions.sort(d3.ascending);
-    //   highlightOptions.unshift('Choose Highlight Area');
-    //   highlightOptions.forEach(option => {
-    //     select.options[select.options.length] = new Option(option);
-    //   });
-    // };
-
-    // const populateCountryFilterSelect = () => {
-    //   const select = document.getElementById('countryFilterSelect');
-    //   for (let i = select.options.length - 1; i >= 0; i--) {
-    //     select.remove(i);
-    //   }
-
-    //   const countries = [...new Set(fileData.map(d => d.country))];
-    //   // console.log(countries);
-    //   countries.sort(d3.ascending);
-    //   countries.unshift('All');
-    //   countries.forEach(country => {
-    //     select.options[select.options.length] = new Option(country);
-    //   });
-    // };
-
-    // const countryFilterSelectChanged = () => {
-    //   // const select = document.getElementById('countryFilterSelect');
-    //   // const selectedCountry = select.options[select.selectedIndex].text;
-    //   // console.log(`selectedCountry: ${selectedCountry}`);
-    //   loadData();
-    //   createChart();
-    // };
 
     const setupDateSliders = () => {
       const startSlider = document.getElementById('startDateRange');
@@ -290,20 +256,23 @@
       const selectedAreaField = getSelectedAreaField().toLowerCase();
       let getTitle;
       if (selectedAreaField === 'computer') {
-        // getTitle = d => d[selectedAreaField];
         getTitle = d => `${d[selectedAreaField]} : ${d.site}`;
       } else {
         getTitle = d => d[selectedAreaField];
       }
       
       let selectedValueField = getSelectedValueField().toLowerCase();
+      let duplicateValueField = selectedValueField;
       if (selectedValueField === '% of rmax for each ranking') {
         selectedValueField = 'percentRmax';
+        duplicateValueField = 'rmax';
       }
       if (selectedValueField === '% of rpeak for each ranking') {
         selectedValueField = 'percentRpeak';
+        duplicateValueField = 'rpeak';
       }
       const getMetric = d => d[selectedValueField];
+      const getDupMetric = d => d[duplicateValueField];
 
       // filter for current date range
       const startDateIndex = document.getElementById('startDateRange').value;
@@ -319,41 +288,73 @@
         });
       }
 
+      // filter by rank
+      const selectedRankFilter = getSelectedRankFilter();
+      if (selectedRankFilter !== 500) {
+        filteredFileData = filteredFileData.filter(d => {
+          return d.rank <= selectedRankFilter;
+        });
+      }
+      console.log(`max rank: ${d3.max(filteredFileData, d => d.rank)}`);
+
       const filterField = getSelectedFilterField().toLowerCase();
       const filterValue = getSelectedFilterValue();
-      console.log(`filterField: ${filterField}  filterValue: ${filterValue}`);
+      // console.log(`filterField: ${filterField}  filterValue: ${filterValue}`);
 
       if (filterValue != 'All') {
-        console.log('filtering field values');
         filteredFileData = filteredFileData.filter(d => {
           return d[filterField] == filterValue;
         });
-        filteredFileData.map(d => console.log(d[filterField]));
+        // filteredFileData.map(d => console.log(d[filterField]));
       }
-      console.log(filteredFileData);
 
-
-      // let dateGroups;
-      // const selectedCountryFilter = getSelectedCountryFilter();
-      // if (selectedCountryFilter != 'All') {
-      //   dateGroups = d3.nest().key(d => d.date).entries(filteredFileData.filter(d => d.country === selectedCountryFilter));
-      // } else {
-      //   dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
-      // }
+      // group entries by date of ranking
       const dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
+      console.log(dateGroups);
+
+      // remove duplicates (take the entry with the max value for current metric)
+      dateGroups.forEach(dateGroup => {
+        metricGroups = d3.nest()
+          .key(d => getTitle(d))
+          .sortValues((a,b) => { return getDupMetric(b) - getDupMetric(a); })
+          .entries(dateGroup.values);
+        // console.log(metricGroups);
+        let newValues = [];
+        metricGroups.forEach(metricGroup => {
+          if (selectedValueField === 'count') {
+            let newValue = {
+              count: metricGroup.values.length
+            }
+            if (selectedAreaField === 'computer') {
+              newValue[site] = metricGroup.values[0][site];
+            }
+            newValue[selectedAreaField] = metricGroup.values[0][selectedAreaField];
+
+            newValues.push(newValue);
+          } else {
+            newValues.push(metricGroup.values[0]);
+          }
+        });
+      
+        // console.log(newValues);
+        Object.assign(dateGroup, {values: Array.from(newValues)});
+        dateGroup.values = newValues;
+      });
 
       // make a new metric that is percent of highest rmax for ranking
-      dateGroups.forEach(dateGroup => {
-        const sumRmax = d3.sum(dateGroup.values, d => d.rmax);
-        const sumRpeak = d3.sum(dateGroup.values, d => d.rpeak);
-        // const maxRmax = d3.max(dateGroup.values, d => d.rmax);
-        dateGroup.values.forEach(v => {
-          const percentRmax = (v.rmax / sumRmax) * 100.;
-          v['percentRmax'] = percentRmax;
-          const percentRpeak = (v.rpeak / sumRpeak) * 100.;
-          v['percentRpeak'] = percentRpeak;
+      if (selectedValueField === 'percentRmax' || selectedValueField === 'percentRpeak') {
+        dateGroups.forEach(dateGroup => {
+          const sumRmax = d3.sum(dateGroup.values, d => d.rmax);
+          const sumRpeak = d3.sum(dateGroup.values, d => d.rpeak);
+          // const maxRmax = d3.max(dateGroup.values, d => d.rmax);
+          dateGroup.values.forEach(v => {
+            const percentRmax = (v.rmax / sumRmax) * 100.;
+            v['percentRmax'] = percentRmax;
+            const percentRpeak = (v.rpeak / sumRpeak) * 100.;
+            v['percentRpeak'] = percentRpeak;
+          });
         });
-      });
+      }
 
       chartData = [];
       let titles = new Set;
@@ -364,6 +365,7 @@
           if (!sites[getTitle(value)]) {
             sites[getTitle(value)] = getMetric(value);
           } else {
+            console.log("THIS SHOULD NOT HAPPEN");
             if (getMetric(value) > sites[getTitle(value)]) {
               sites[getTitle(value)] = getMetric(value);
             }
@@ -418,9 +420,6 @@
         .x((d, i) => x(chartData[i].date))
         .y0(d => y(d[0]))
         .y1(d => y(d[1]));
-        // .y((d, i) => y(chartData[i].date))
-        // .x0(d => x(d[0]))
-        // .x1(d => x(d[1]));
 
       zNormal = d3.scaleSequentialSqrt(t => d3.interpolatePurples((t + 0.5) / 2))
         .domain(d3.extent(series, d => d.sum));
@@ -573,7 +572,8 @@
         date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region
       }) => ({
         date: parseTime(date),
-        rank: 501 - (+rank) ,
+        // rank: 501 - (+rank) ,
+        rank: +rank,
         computer: computer,
         site: site,
         rmax: +rmax,
@@ -593,12 +593,9 @@
         dates = [...new Set(fileData.map(d => d.date.getTime()))];
         dates = dates.map(d => new Date(d));
         dates.sort(d3.ascending);
-        // console.log(dates);
         setupDateSliders();
-        // populateCountryFilterSelect();
         loadData();
         createChart();
-        // populateHighlightAreaSelect();
       })
       .catch(function(error) {
         console.log(error);
