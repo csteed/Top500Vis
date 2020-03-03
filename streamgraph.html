@@ -63,8 +63,8 @@
         <!-- <option>Processors</option> -->
         <option>Power</option>
       </select><br/><br/>
-      <label for="filterFieldSelect">Filter Field: </label>
-      <select id="filterFieldSelect" onChange="filterFieldSelectChanged()">
+      <label for="filter1FieldSelect">Filter 1 Field: </label>
+      <select id="filter1FieldSelect" onChange="filter1FieldSelectChanged()">
         <option selected>Country</option>
         <option>Continent</option>
         <option>Region</option>
@@ -72,8 +72,25 @@
         <option>Segment</option>
         <option>Site</option>
       </select>&nbsp;&nbsp;&nbsp;
-      <label for="filterValueSelect">Filter Value: </label>
-      <select id="filterValueSelect" onChange="filterValueSelectChanged()">
+      <label for="filter1ValueSelect">Filter 1 Value: </label>
+      <select id="filter1ValueSelect" onChange="filter1ValueSelectChanged()">
+      </select><br/><br/>
+      <label for="filterCombineModeSelect">Filter Combination Mode: </label>
+      <select id="filterCombineModeSelect" onChange="filterCombineModeSelectChanged()">
+        <option selected>OR</option>
+        <option>AND</option>
+      </select><br/><br/>
+      <label for="filter2FieldSelect">Filter 2 Field: </label>
+      <select id="filter2FieldSelect" onChange="filter2FieldSelectChanged()">
+        <option selected>Country</option>
+        <option>Continent</option>
+        <option>Region</option>
+        <option>Manufacturer</option>
+        <option>Segment</option>
+        <option>Site</option>
+      </select>&nbsp;&nbsp;&nbsp;
+      <label for="filter2ValueSelect">Filter 2 Value: </label>
+      <select id="filter2ValueSelect" onChange="filter2ValueSelectChanged()">
       </select><br/><br/>
       <label for="startDateRange">Start Date: </label>
       <input type="range" id="startDateRange" onChange="startDateRangeChanged()"/>&nbsp;&nbsp;
@@ -122,13 +139,23 @@
       return str.replace(/\s+/g, '');
     };
 
-    const getSelectedFilterField = () => {
-      const select = document.getElementById('filterFieldSelect');
+    const getSelectedFilter1Field = () => {
+      const select = document.getElementById('filter1FieldSelect');
       return select.options[select.selectedIndex].text;
     }
 
-    const getSelectedFilterValue = () => {
-      const select = document.getElementById('filterValueSelect');
+    const getSelectedFilter1Value = () => {
+      const select = document.getElementById('filter1ValueSelect');
+      return select.options[select.selectedIndex].text;
+    }
+
+    const getSelectedFilter2Field = () => {
+      const select = document.getElementById('filter2FieldSelect');
+      return select.options[select.selectedIndex].text;
+    }
+
+    const getSelectedFilter2Value = () => {
+      const select = document.getElementById('filter2ValueSelect');
       return select.options[select.selectedIndex].text;
     }
 
@@ -157,8 +184,13 @@
       return +select.options[select.selectedIndex].text;
     }
 
-    const filterFieldSelectChanged = () => {
-      const selectedFilterField = getSelectedFilterField().toLowerCase();
+    const getSelectedFilterCombineModeValue = () => {
+      const select = document.getElementById('filterCombineModeSelect');
+      return select.options[select.selectedIndex].text;
+    }
+
+    const filter1FieldSelectChanged = () => {
+      const selectedFilterField = getSelectedFilter1Field().toLowerCase();
       // console.log(`Selected Filter Field is ${selectedFilterField}`);
 
       // get values to popular the filter value select options
@@ -167,7 +199,7 @@
       // console.log(values);
 
       // clear all current filter value select options
-      const select = document.getElementById('filterValueSelect');
+      const select = document.getElementById('filter1ValueSelect');
       for (let i = select.options.length - 1; i >= 0; i--) {
         select.remove(i);
       }
@@ -178,9 +210,44 @@
       });
     };
 
-    const filterValueSelectChanged = () => {
-      const selectedFilterValue = getSelectedFilterValue();
+    const filter2FieldSelectChanged = () => {
+      const selectedFilterField = getSelectedFilter2Field().toLowerCase();
+      // console.log(`Selected Filter Field is ${selectedFilterField}`);
+
+      // get values to popular the filter value select options
+      const values = [...new Set(fileData.map(d => d[selectedFilterField]))];
+      values.sort(d3.ascending);
+      // console.log(values);
+
+      // clear all current filter value select options
+      const select = document.getElementById('filter2ValueSelect');
+      for (let i = select.options.length - 1; i >= 0; i--) {
+        select.remove(i);
+      }
+
+      values.unshift('All');
+      values.forEach(value => {
+        select.options[select.options.length] = new Option(value);
+      });
+    };
+
+    const filter1ValueSelectChanged = () => {
+      const selectedFilterValue = getSelectedFilter1Value();
       console.log(`Selected Filter Value is ${selectedFilterValue}`);
+      loadData();
+      createChart();
+    }
+
+    const filter2ValueSelectChanged = () => {
+      const selectedFilterValue = getSelectedFilter2Value();
+      console.log(`Selected Filter Value is ${selectedFilterValue}`);
+      loadData();
+      createChart();
+    }
+
+    const filterCombineModeSelectChanged = () => {
+      const selectedCombineMode = getSelectedFilterCombineModeValue();
+      console.log(`Selected filter combine mode value is ${selectedCombineMode}`);
       loadData();
       createChart();
     }
@@ -297,16 +364,34 @@
       }
       console.log(`max rank: ${d3.max(filteredFileData, d => d.rank)}`);
 
-      const filterField = getSelectedFilterField().toLowerCase();
-      const filterValue = getSelectedFilterValue();
+      // apply filter 1 
+      const filter1Field = getSelectedFilter1Field().toLowerCase();
+      const filter1Value = getSelectedFilter1Value();
+      const filter2Field = getSelectedFilter2Field().toLowerCase();
+      const filter2Value = getSelectedFilter2Value();
+      const filterCombineMode = getSelectedFilterCombineModeValue();
       // console.log(`filterField: ${filterField}  filterValue: ${filterValue}`);
 
-      if (filterValue != 'All') {
+      if (filter1Value !== 'All' && filter2Value === 'All') {
         filteredFileData = filteredFileData.filter(d => {
-          return d[filterField] == filterValue;
+          return d[filter1Field] == filter1Value;
         });
         // filteredFileData.map(d => console.log(d[filterField]));
-      }
+      } else if (filter1Value === 'All' && filter2Value !== 'All') {
+        filteredFileData = filteredFileData.filter(d => {
+          return d[filter2Field] == filter2Value;
+        });
+      } else if (filter1Value !== 'All' && filter2Value !== 'All') {
+        if (filterCombineMode === 'AND') {
+          filteredFileData = filteredFileData.filter(d => {
+            return (d[filter1Field] == filter1Value && d[filter2Field] == filter2Value);
+          });
+        } else {
+          filteredFileData = filteredFileData.filter(d => {
+            return (d[filter1Field] == filter1Value || d[filter2Field] == filter2Value);
+          });
+        }
+      } 
 
       // group entries by date of ranking
       const dateGroups = d3.nest().key(d => d.date).entries(filteredFileData);
@@ -529,6 +614,8 @@
         .data(series)
         .join("path")
           .attr("fill", d => zNormal(d.sum))
+          // .attr("stroke", "gray")
+          // .attr("stroke-width", 0.5)
           .attr("d", area)
           .attr("class", "areaPath")
           .attr("id", d => `${titleIDMap.get(d.key)}`)
@@ -589,7 +676,8 @@
     )
       .then(function(data) {
         fileData = data;
-        filterFieldSelectChanged();
+        filter1FieldSelectChanged();
+        filter2FieldSelectChanged();
         dates = [...new Set(fileData.map(d => d.date.getTime()))];
         dates = dates.map(d => new Date(d));
         dates.sort(d3.ascending);
