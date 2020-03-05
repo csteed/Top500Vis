@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<html>
+  <head>
+    <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
+    <script src="js/d3.min.js"></script>
+    <script src="js/d3-array.min.js"></script>
+
+    <style>
+      body {
+        font: 12px sans-serif;
+        /* margin: 4px 20px 0px 20px; */
+        /* background: gray; */
+        background-color: whitesmoke;
+      }
+
+      .top {
+        background-color: whitesmoke;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        width: 100%;
+      }
+
+      .main {
+        margin-top: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Supercomputing Top500 Country RMax Index Chart Visualization</h2>
+    <h3>Description:</h3>
+    <p>
+      This webpage presents the highest RMax value for the 20 countries that appear the most in the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as an index time chart. The values are shown relative to each countries highest ranking on the highlighted date. Hover over the chart to move the comparison date. This plot was adapted from Mike Bostock's <a href="https://observablehq.com/@d3/index-chart" target="_blank">Index Chart</a>.
+    </p>
+
+    <div id="chart"></div>
+
+  </body>
+
+  <script>
+    let parseTime = d3.timeParse("%Y-%m");
+    let fileData;
+    let chartData;
+    let svg;
+    const margin = {top: 20, right: 120, bottom: 30, left: 80};
+
+    const removeSpaces = (str) => {
+      return str.replace(/\s+/g, '');
+    };
+
+    const loadData = () => {
+      // console.log(fileData);
+
+      const nestedDates = d3.nest()
+        .key(d => d.date)
+        .entries(fileData);
+      // console.log(nestedDates);
+
+      chartData = [];
+      nestedDates.forEach(dateNode => {
+        const nestedCountries = d3.nest()
+          .key(d => d.country)
+          .sortValues((a,b) => {return b.rmax - b.rmax})
+          .entries(dateNode.values);
+        // console.log(nestedCountries);
+
+        const countryValues = nestedCountries.map(d => {
+          return {
+            date: new Date(dateNode.key),
+            name: d.key,
+            // category: d.values[0].segment,
+            value: d.values[0].rmax
+          }
+        }).sort((a,b) => d3.descending(a.value,b.value));
+        // console.log(countryValues);
+        chartData = chartData.concat(countryValues);
+      });
+
+      let nestedNames = d3.nest()
+        .key(d => d.name)
+        .sortValues((a,b) => d3.ascending(a.date, b.date))
+        .entries(chartData);
+      nestedNames.sort((a,b) => d3.descending(a.values.length,b.values.length));
+      // console.log(nestedNames);
+      let topNames = nestedNames.map(d => d.key).splice(0, 20);
+      // console.log(topNames);
+
+      chartData = chartData.filter(d => {
+        return topNames.includes(d.name);
+        // return (d.name === "United States" || d.name === "China" || d.name === "Japan");
+      });
+      console.log(chartData);
+      // console.log(d3.min(chartData, d => d.date));
+      // console.log(d3.extent(chartData, d => d.date));
+      // let countries = [...new Set(chartData.map(d => d.name))];
+      // console.log(countries);
+    };
+
+    const createChart = () => {
+      d3.select('#chart').selectAll('*').remove();
+
+      const divWidth = document.getElementById('chart').clientWidth;
+      const width = divWidth - margin.left - margin.right;
+      const height = 700 - margin.top - margin.bottom;
+
+      const svg = d3.select('#chart').append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .style("-webkit-tap-highlight-color", "transparent")
+        .on("mousemove touchmove", moved);
+        
+
+      const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+        // .on("mousemove touchmove", moved);
+
+      const k = d3.max(d3.group(chartData, d => d.name), ([, group]) => d3.max(group, d => d.value) / d3.min(group, d => d.value));
+
+      const countryNames = [...new Set(chartData.map(d => d.name))].sort(d3.descending);
+      // console.log(countryNames);
+      // const z = d3.scaleOrdinal(d3.schemeCategory10).domain(chartData.map(d => d.name));
+      const z = d3.scaleOrdinal()
+        .range([
+          "#7166d9",
+          "#9ab737",
+          "#b555be",
+          "#50b54c",
+          "#d34a90",
+          "#7fbc75",
+          "#d8425d",
+          "#4cbfb2",
+          "#cb4b2f",
+          "#5f9ed7",
+          "#dd862f",
+          "#6b70bb",
+          "#c9a536",
+          "#ce87c3",
+          "#63772a",
+          "#a24b64",
+          "#398455",
+          "#e08770",
+          "#bba863",
+          "#95622b"])
+        .domain(countryNames);
+        // .domain([...new Set(chartData.map(d => d.name))]);
+      // const z = d3.scaleSequential(d3.interpolateBlues)
+      //   .domain(chartData.map(d => d.name));
+
+      const x = d3.scaleTime()
+        .domain(d3.extent(chartData, d => d.date))
+        .range([0, width])
+        // .nice()
+        .clamp(true);
+
+      // console.log(d3.extent(chartData, d => d.date));
+      // console.log(x.domain());
+      
+      const y = d3.scaleLog()
+      // const y = d3.scaleLinear()
+        .domain([1 / k, k])
+        .rangeRound([height, 0]);
+      
+      const line = d3.line()
+        .curve(d3.curveMonotoneX)
+        .x(d => x(d.date))
+        .y(d => y(d.value));
+
+      const bisect = d3.bisector(d => d.date).left;
+
+      var series = d3.groups(chartData, d => d.name).map(([key, values]) => {
+        const v = values[0].value;
+        return {key, values: values.map(({date, value}) => ({date, value: value / v}))};
+      });
+      series = series.sort((a,b) => d3.ascending(a.key, b.key));
+      console.log(series);
+
+      const xAxis = g => g
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0))
+        .call(g => g.select(".domain").remove());
+      
+      const yAxis = g => g
+        .call(d3.axisLeft(y)
+          .ticks(null, x => d3.format(",")(+x.toFixed(6)) + "x"))
+          // .tickFormat(","))
+          // .ticks(null, x => +x.toFixed(6) + "x"))
+          // .ticks(null, ",f"))
+        .call(g => g.selectAll(".tick line").clone()
+          .attr("stroke-opacity", d => d === 1 ? null : 0.2)
+          .attr("x2", width))
+        .call(g => g.select(".domain").remove());
+
+      const formatDate = d3.utcFormat("%B, %Y");
+
+      g.append("g")
+        .call(xAxis);
+      
+      g.append("g")
+        .call(yAxis);
+
+      const rule = g.append("g")
+        .append("line")
+          .attr("y1", height)
+          .attr("y2", 0)
+          .attr("stroke", "black");
+
+      const serie = g.append("g")
+          .style("font", "bold 10px sans-serif")
+        .selectAll("g")
+        .data(series)
+        .join("g");
+
+      serie.append("path")
+        .attr("fill", "none")
+        .attr("stroke-width", 1.5)
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round")
+        .attr("stroke", d => z(d.key))
+        .attr("d", d => line(d.values));
+      
+      serie.append("text")
+          .datum(d => ({key: d.key, value: d.values[d.values.length - 1].value}))
+          .attr("fill", "none")
+          .attr("stroke", "white")
+          .attr("stroke-width", 3)
+          .attr("x", x.range()[1] + 3)
+          .attr("y", d => y(d.value))
+          .attr("dy", "0.35em")
+          .text(d => d.key)
+        .clone(true)
+          .attr("fill", d => z(d.key))
+          .attr("stroke", null);
+
+      d3.transition()
+        .ease(d3.easeCubicInOut)
+        .duration(6000)
+        .tween("date", () => {
+          const i = d3.interpolateDate(x.domain()[0], x.domain()[1]);
+          return t => update(i(t));
+        });
+      
+      function update(date) {
+        date = d3.utcDay.round(date);
+        rule.attr("transform", `translate(${x(date) + 0.5}, 0)`);
+        serie.attr("transform", ({values}) => {
+          const i = bisect(values, date, 0, values.length - 1);
+          return `translate(0,${y(1) - y(values[i].value / values[0].value)})`;
+        });
+        svg.property("value", date).dispatch("input");
+      }
+
+      function moved() {
+        update(x.invert(d3.mouse(this)[0]-margin.left));
+        d3.event.preventDefault();
+      }
+      
+      update(x.domain()[0]);
+    };
+
+        
+    d3.csv(
+      "output.csv",
+      ({
+        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region
+      }) => ({
+        date: parseTime(date),
+        rank: +rank,
+        computer: computer,
+        site: site,
+        rmax: +rmax,
+        rpeak: +rpeak,
+        manufacturer: manufacturer,
+        name: name,
+        segment: segment,
+        country: country,
+        continent: continent,
+        region: region,
+        power: +power
+      })
+    )
+      .then(function(data) {
+        fileData = data;
+        loadData();
+        createChart();
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  </script>
+</html>
