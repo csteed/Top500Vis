@@ -32,9 +32,10 @@
       This webpage presents selected statistics from the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a streamgraph chart based on the style of <a href="http://leebyron.com/streamgraph/" target="_blank">Lee Byron <i>et al</i></a>.
     </p>
     <ul>
-      <li><b>Area Field:</b> Select the field to assign to stream areas</li>
+      <li><b>Group Field:</b> Select the field to assign to stream areas</li>
       <li><b>Value Field:</b> Select the value for sizing areas</li>
-      <li><b>Filter Field / Value:</b> Only show entries that match the filter field value</li>
+      <li><b>Filter 1 & 2 Field / Value:</b> Only show entries that match the filter field value</li>
+      <li><b>Filter Combination Mode:</b> Boolean operation to use to combine filter 1 and 2 criteria</li>
       <li><b>Gray Vertical Lines:</b> Represent the dates of Top500 rankings</li>
       <li><b>Area Colors:</b> Encode the value sum for each ranking of the area</li>
       <li><b>Start / End Dates:</b> Show only entries in start and end date range</li>
@@ -42,7 +43,7 @@
     </ul>
     <h3>Controls:</h3>
     <p>
-      <label for="areaFieldSelect">Area Field: </label>
+      <label for="areaFieldSelect">Group Field: </label>
       <select id="areaFieldSelect" onChange="areaFieldSelectChanged()">
         <option selected>Country</option>
         <option>Continent</option>
