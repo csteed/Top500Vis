@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<html>
+  <head>
+    <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
+    <script src="js/d3.min.js"></script>
+    <script src="js/d3-array.min.js"></script>
+
+    <style>
+      body {
+        font: 12px sans-serif;
+        /* margin: 4px 20px 0px 20px; */
+        /* background: gray; */
+        background-color: whitesmoke;
+      }
+
+      .top {
+        background-color: whitesmoke;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        width: 100%;
+      }
+
+      .main {
+        margin-top: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Supercomputing Top500 Heatmap Visualization</h2>
+    <h3>Description:</h3>
+    <p>
+    </p>
+
+    <h3>Controls:</h3>
+    <p>
+      <label for="groupFieldSelect">Group Field: </label>
+      <select id="groupFieldSelect" onChange="groupFieldSelectChanged()">
+        <option selected>Country</option>
+        <option>Continent</option>
+        <option>Computer</option>
+        <option>Manufacturer</option>
+        <option>Region</option>
+        <option>Segment</option>
+        <option>Site</option>
+      </select><br/><br/>
+    </p>
+
+    <div id="chart"></div>
+  </body>
+
+  <script>
+    let parseTime = d3.timeParse("%Y-%m");
+    let fileData;
+    let chartData;
+    let svg;
+    const margin = {top: 20, right: 20, bottom: 30, left: 20};
+    const rowHeight = 12;
+
+    // let names;
+    // let values;
+    let dates;
+
+    
+    const removeSpaces = (str) => {
+      return str.replace(/\s+/g, '');
+    };
+
+    const getSelectedGroupField = () => {
+      const select = document.getElementById('groupFieldSelect');
+      return select.options[select.selectedIndex].text;
+    };
+
+    const groupFieldSelectChanged = () => {
+      loadData();
+      createChart();
+    };
+
+    const loadData = () => {
+      console.log(fileData);
+
+      const selectedGroupField = getSelectedGroupField().toLowerCase();
+      console.log(`Selected Group Field: ${selectedGroupField}`);
+
+      let groupValue;
+      if (selectedGroupField === 'computer') {
+        groupValue = d => {return `${d.computer}:${d.site}`};
+      } else {
+        groupValue = d => d[selectedGroupField];
+      }
+
+      const nestedGroups = d3.nest()
+        .key(groupValue).sortKeys(d3.ascending)
+        .sortValues((a,b) => d3.ascending(a.date, b.date))
+        .entries(fileData);
+
+      console.log(nestedGroups);
+
+      dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
+      console.log(dates);
+
+      chartData = [];
+      nestedGroups.forEach(groupNode => {
+        var groupObject = {
+          name: groupNode.key,
+          values: new Array(dates.length)
+        };
+        groupNode.values.forEach(d => {
+          const dateIndex = dates.indexOf(d.date);
+          if (isNaN(groupObject.values[dateIndex])) {
+            groupObject.values[dateIndex] = d.rank;
+          } else {
+            if (d.rank < groupObject.values[dateIndex]) {
+              groupObject.values[dateIndex] = d.rank;
+            }
+          }
+        });
+        chartData.push(groupObject);
+      });
+
+      chartData.map(d => {
+        var newValues = [];
+        d.values.map((v,i) => {
+          if (!isNaN(v)) {
+            newValues.push({
+              date: dates[i],
+              value: v
+            });
+          }
+        });
+        d.values = newValues;
+      })
+      console.log(chartData);
+      // nestedGroups.forEach(groupNode => {
+      //   names.push(groupNode.key);
+      //   let groupValues = new Array(dates.length);
+      //   groupNode.values.forEach(d => {
+      //     const dateIndex = dates.indexOf(d.date);
+      //     if (isNaN(groupValues[dateIndex])) {
+      //       groupValues[dateIndex] = d.rank;
+      //     } else {
+      //       if (d.rank < groupValues[dateIndex]) {
+      //         groupValues[dateIndex] = d.rank;
+      //       }
+      //     }
+      //   });
+      //   values.push(groupValues);
+      // });
+
+      // console.log(names);
+      // console.log(values);
+    };
+
+    const createChart = () => {
+      if (chartData) {
+        d3.select('#chart').selectAll('*').remove();
+
+        const divWidth = document.getElementById('chart').clientWidth;
+        const width = divWidth - margin.left - margin.right;
+        const height = 1000;
+        // const height = 500 * rowHeight;
+
+        const svg = d3.select('#chart').append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom);
+
+        const g = svg.append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const rankExtents = [
+          d3.min(chartData, d => d3.min(d.values, v => v.value)),
+          d3.max(chartData, d => d3.max(d.values, v => v.value))
+        ];
+        console.log(rankExtents);
+
+        const line = d3.line()
+          .x(d => x(d.date))
+          .y(d => y(d.value));
+          // .defined(d => !isNaN(d))
+          // .x((d,i) => x(dates[i]))
+          // .y(d => y(d));
+
+        const x = d3.scalePoint()
+          // .domain([d3.min(dates),d3.max(dates)])
+          .domain(dates)
+          .rangeRound([0, width]);
+
+        const y = d3.scaleLinear()
+          .domain([1,500]).nice()
+          .range([0, height]);
+        
+        // const y = d3.scaleBand()
+        //   .domain(names)
+        //   .rangeRound([0, height]);
+        
+        // const color = d3.scaleSequential([d3.max(values, d => d3.max(d)), 1], d3.interpolateGreens);
+
+        g.append("g")
+          .call(d3.axisTop(x))
+          .call(g => g.select(".domain").remove());
+
+        g.append("g")
+          .call(d3.axisLeft(y).tickSize(0))
+          .call(g => g.select(".domain").remove());
+
+        // var data = [];
+        // names.map((d,i) => data.push({name: d, values: values[i]}));
+        // console.log(data);
+        const string = g.append("g")
+            .attr("stroke-width", 1.)
+          .selectAll("g")
+          .data(chartData)
+          .join("g");
+
+        string.append("path")
+          .attr("fill", "none")
+          .attr("stroke", "black")
+          .attr("stroke-opacity", 0.3)
+          .attr("d", d => line(d.values));
+
+        // string.append("g")
+        //     .attr("stroke", "white")
+        //     .attr("fill", "black")
+        //   .selectAll("circle")
+        //   .data(d => d.values)
+        //   .join("circle")
+        //     .attr("transform", d => `translate(${x(d.date)},${y(d.value)})`)
+        //     .attr("r", 2.5);
+
+        // const row = g.append("g")
+        //   .selectAll("g")
+        //   .data(values)
+        //   .join("g")
+        //     .attr("transform", (d, i) => `translate(0,${y(names[i])})`);
+          
+        // row.selectAll("rect")
+        //   .data(d => d)
+        //   .join("rect")
+        //     // .attr("x", (d, i) => x(dates[i]) + 1)
+        //     .attr("x", (d, i) => x(dates[i]))
+        //     // .attr("width", (d, i) => x(dates[i+1]) - x(dates[i]) - 1)
+        //     .attr("width", x.bandwidth())
+        //     .attr("height", y.bandwidth() - 1)
+        //     .attr("fill", d => isNaN(d) ? "whitesmoke" : d === 1 ? "black" : color(d))
+        //   .append("title")
+        //     .text((d, i) => `Rank ${d} in ${dates[i]}`);
+      }
+    };
+
+        
+    d3.csv(
+      "output.csv",
+      ({
+        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region
+      }) => ({
+        // date: parseTime(date),
+        date,
+        rank: +rank,
+        computer: computer,
+        site: site.trim(),
+        rmax: +rmax,
+        rpeak: +rpeak,
+        manufacturer: manufacturer,
+        name: name,
+        segment: segment,
+        country: country,
+        continent: continent,
+        region: region,
+        power: +power
+      })
+    )
+      .then(function(data) {
+        fileData = data;
+        loadData();
+        createChart();
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  </script>
+</html>
