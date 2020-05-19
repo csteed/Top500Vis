@@ -100,8 +100,7 @@
       // console.log(nestedGroups);
 
       dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
-      // console.log(dates);
-
+      
       chartData = [];
       nestedGroups.forEach(groupNode => {
         var groupObject = {
@@ -127,7 +126,7 @@
           if (!isNaN(v)) {
             newValues.push({
               name: d.name,
-              date: dates[i],
+              date: parseTime(dates[i]),
               value: v
             });
           }
@@ -135,6 +134,9 @@
         d.values = newValues;
       })
       console.log(chartData);
+
+      dates = dates.map(d => parseTime(d));
+      console.log(dates);
 
       ranks = d3.merge(chartData.map(d => d.values.map(s => ({name: d, rank: s}))));
       console.log(ranks);
@@ -197,9 +199,12 @@
           .append('svg:g')
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        const x = d3.scalePoint()
-          .domain(dates)
-          .padding(0.5)
+        // const x = d3.scalePoint()
+        //   .domain(dates)
+        //   .padding(0.5)
+        //   .rangeRound([0, width]);
+        const x = d3.scaleTime()
+          .domain(d3.extent(dates))
           .rangeRound([0, width]);
 
         const y = d3.scaleLinear()
@@ -262,7 +267,7 @@
 
           const path = tooltip.append("path")
             .attr("fill", "white")
-            .attr("fill-opacity", 0.5);
+            .attr("fill-opacity", 0.7);
 
           const text = tooltip.append("text");
 
@@ -295,31 +300,15 @@
                 drawLines();
               })
               .on("mouseover", d => {
-                // console.log(d);
                 tooltip.style("display", null);
                 line1.text(`${d.name.name}`);
                 line2.text(`${'#'}${d.rank.value}`);
                 line3.text(`${d.rank.date}`);
                 path.attr("stroke", "black");
                 const box = text.node().getBBox();
-
-                /* Works for left side
-                path.attr("d", `
-                  M${box.x - 10},${box.y - 10}
-                  h${box.width + 20}
-                  V${box.y + (box.height / 2 - 5)}l5,5l-5,5
-                  V${box.y + (box.height + 10)}
-                  h-${box.width + 20}
-                  z
-                `);
-                tooltip.attr("transform", `translate(${
-                  x(d.rank.date) - box.width - 24 },${
-                  y(d.rank.value) - box.height / 2 - box.y
-                })`);  
-                */
                 
                 if (x(d.rank.date) + box.width + 20 > width) {
-                  console.log('tooltip clipped on right side');
+                  // console.log('tooltip clipped on right side');
                     path.attr("d", `
                     M${box.x - 10},${box.y - 10}
                     h${box.width + 20}
@@ -347,49 +336,7 @@
                   })`);  
                 }
                 
-                // if (x(d.rank.date) - box.width / 2 < 0) {
-                //   console.log('tooltip clipped on left side');
-                // } else if (x(d.rank.date) + box.width / 2 > width) {
-                //   console.log('tooltip clipped on right side');
-                // }
-                // pointing left
-                // path.attr("d", `
-                //   M${box.x - 10},${box.y - 10}
-                //   V${box.height / 2 - 5}l-5,5l5,5
-                //   V${box.height + 10}
-                //   h${box.width + 20}
-                //   v-${box.height + 20}
-                //   z
-                // `);
-                // path.attr("d", `
-                //   M${box.x - 10},${box.y - 10}
-                //   H${box.width + 10}
-                //   v${box.height + 20}
-                //   h-${box.width + 20}
-                //   z
-                // `);
-                // console.log(box);
-                // path.attr("d", `
-                //   M${box.x - 10},${box.y - 10}
-                //   V${box.height}
-                //   h${box.width + 20}
-                //   V${box.y - 10}
-                //   z
-                // `);
-                /* Works on right side
-                path.attr("d", `
-                  M${box.x - 10},${box.y - 10}
-                  V${box.y + (box.height / 2 - 5)}l-5,5l5,5
-                  V${box.y + (box.height + 10)}
-                  h${box.width + 20}
-                  V${box.y - 10}
-                  z
-                `);
-                tooltip.attr("transform", `translate(${
-                  x(d.rank.date) + 24 },${
-                  y(d.rank.value) - box.height / 2 - box.y
-                })`);
-                */
+                // The original tooltip was below the data node
                 // path.attr("d", `
                 //   M${box.x - 10},${box.y - 10}
                 //   H${box.width / 2 - 5}l5,-5l5,5
@@ -415,16 +362,6 @@
                   }
                 });
                 drawLines();
-                // string.attr("stroke", "#ddd");
-                // string.selectAll("path")
-                //   // .attr("stroke", s => s.name === d.name.name ? "black" : "#ddd")
-                //   .attr("stroke-opacity", s => s.name === d.name.name ? null : 0.2)
-                //   .attr("stroke-width", s => s.name === d.name.name ? 2 : null);
-                // string.selectAll("path")
-                //   .filter(s => s.name === d.name.name).raise();
-                // string.selectAll("circle")
-                //   .attr("fill-opacity", s => s.name === d.name.name ? 'none' : 0.2)
-                //   .filter(s => s.name === d.name.name).raise();
               });
         };
           
