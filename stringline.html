@@ -302,18 +302,106 @@
                 line3.text(`${d.rank.date}`);
                 path.attr("stroke", "black");
                 const box = text.node().getBBox();
+
+                /* Works for left side
                 path.attr("d", `
                   M${box.x - 10},${box.y - 10}
-                  H${box.width / 2 - 5}l5,-5l5,5
-                  H${box.width + 10}
-                  v${box.height + 20}
+                  h${box.width + 20}
+                  V${box.y + (box.height / 2 - 5)}l5,5l-5,5
+                  V${box.y + (box.height + 10)}
                   h-${box.width + 20}
                   z
                 `);
                 tooltip.attr("transform", `translate(${
-                  x(d.rank.date) - box.width / 2},${
-                  y(d.rank.value) + 28
+                  x(d.rank.date) - box.width - 24 },${
+                  y(d.rank.value) - box.height / 2 - box.y
+                })`);  
+                */
+                
+                if (x(d.rank.date) + box.width + 20 > width) {
+                  console.log('tooltip clipped on right side');
+                    path.attr("d", `
+                    M${box.x - 10},${box.y - 10}
+                    h${box.width + 20}
+                    V${box.y + (box.height / 2 - 5)}l5,5l-5,5
+                    V${box.y + (box.height + 10)}
+                    h-${box.width + 20}
+                    z
+                  `);
+                  tooltip.attr("transform", `translate(${
+                    x(d.rank.date) - box.width - 24 },${
+                    y(d.rank.value) - box.height / 2 - box.y
+                  })`); 
+                } else {
+                  path.attr("d", `
+                    M${box.x - 10},${box.y - 10}
+                    V${box.y + (box.height / 2 - 5)}l-5,5l5,5
+                    V${box.y + (box.height + 10)}
+                    h${box.width + 20}
+                    V${box.y - 10}
+                    z
+                  `);
+                  tooltip.attr("transform", `translate(${
+                    x(d.rank.date) + 24 },${
+                    y(d.rank.value) - box.height / 2 - box.y
+                  })`);  
+                }
+                
+                // if (x(d.rank.date) - box.width / 2 < 0) {
+                //   console.log('tooltip clipped on left side');
+                // } else if (x(d.rank.date) + box.width / 2 > width) {
+                //   console.log('tooltip clipped on right side');
+                // }
+                // pointing left
+                // path.attr("d", `
+                //   M${box.x - 10},${box.y - 10}
+                //   V${box.height / 2 - 5}l-5,5l5,5
+                //   V${box.height + 10}
+                //   h${box.width + 20}
+                //   v-${box.height + 20}
+                //   z
+                // `);
+                // path.attr("d", `
+                //   M${box.x - 10},${box.y - 10}
+                //   H${box.width + 10}
+                //   v${box.height + 20}
+                //   h-${box.width + 20}
+                //   z
+                // `);
+                // console.log(box);
+                // path.attr("d", `
+                //   M${box.x - 10},${box.y - 10}
+                //   V${box.height}
+                //   h${box.width + 20}
+                //   V${box.y - 10}
+                //   z
+                // `);
+                /* Works on right side
+                path.attr("d", `
+                  M${box.x - 10},${box.y - 10}
+                  V${box.y + (box.height / 2 - 5)}l-5,5l5,5
+                  V${box.y + (box.height + 10)}
+                  h${box.width + 20}
+                  V${box.y - 10}
+                  z
+                `);
+                tooltip.attr("transform", `translate(${
+                  x(d.rank.date) + 24 },${
+                  y(d.rank.value) - box.height / 2 - box.y
                 })`);
+                */
+                // path.attr("d", `
+                //   M${box.x - 10},${box.y - 10}
+                //   H${box.width / 2 - 5}l5,-5l5,5
+                //   H${box.width + 10}
+                //   v${box.height + 20}
+                //   h-${box.width + 20}
+                //   z
+                // `);
+                // tooltip.attr("transform", `translate(${
+                //   x(d.rank.date) - box.width / 2},${
+                //   y(d.rank.value) + 28
+                // })`);
 
                 foregroundData = [];
                 backgroundData = [];
