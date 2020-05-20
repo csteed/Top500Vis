@@ -25,10 +25,30 @@
       .main {
         margin-top: 400px;
       }
+
+      table {
+        width: 100%;
+      }
+
+      #logo {
+        text-align: right;
+      }
     </style>
   </head>
   <body>
-    <h2>Supercomputing Top500 Country RMax Index Chart Visualization</h2>
+    <table>
+      <tr>
+        <td>
+          <h2>Supercomputing <a href="http://top500.org" target="_blank">Top500</a> Country RMax Index Chart Visualization</h2>
+          <strong>Data Source:</strong> <a href="http://top500.org" target="_blank">Top500 List</a> from the <a href="https://www.icl.utk.edu/" target="_blank">Univ. of Tennessee Innovative Computing Laboratory</a> <br/>
+          <strong>Author:</strong> <a href="https://csteed.com" target="_blank">Chad A. Steed</a>, <a href="https://vis.ornl.gov" target="_blank">VISTA Lab</a>, <a href="https://www.ornl.gov/division/csmd" target="_blank">Computer Science and Mathematics Division</a>, <a href="https://ornl.gov" target="_blank">Oak Ridge National Laboratory</a>
+          <br/><br/>
+        </td>
+
+        <td id="logo"><a href="https://vis.ornl.gov/" target="_blank"><img src="img/vista-logo.png" height=70 alt="ORNL VISTA Vis Lab"></img></a></td>
+      </tr>
+    </table>
+
     <h3>Description:</h3>
     <p>
       This webpage presents the highest RMax value for the 20 countries that appear the most in the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as an index time chart. The values are shown relative to each countries highest ranking on the highlighted date. Hover over the chart to move the comparison date. This plot was adapted from Mike Bostock's <a href="https://observablehq.com/@d3/index-chart" target="_blank">Index Chart</a>.
@@ -36,6 +56,13 @@
 
     <div id="chart"></div>
 
+    <center>
+      <h4>&copy; <a href="https://www.ornl.gov">Oak Ridge National Laboratory</a>
+          <script type="text/javascript">
+              document.write(new Date().getFullYear());
+          </script>
+      </h4>
+    </center>
   </body>
 
   <script>

@@ -24,11 +24,19 @@
         margin-top: 200px;
       }
 
-      img {
+      #links img {
         border: 2px solid #999;
         border-radius: 8px;
         margin: 10px 10px;
         box-shadow: 2px 2px 18px rgb(82, 81, 81);
+      }
+
+      table {
+        width: 100%;
+      }
+
+      #logo img{
+        text-align: right;
       }
     </style>
   </head>
@@ -36,12 +44,17 @@
     <center>
       <h2>Supercomputing Top500 Visualizations</h2>
       <h3>Created by <a href="https://csteed.com" target="_blank">Chad A. Steed</a></h3>
-      <p>
+      <p id="links">
         <br/><br/>
+        <a href="./stringline.html" alt="Rankings Stringline"><img class="link" src="img/stringline-thumb.png" height=200></img></a>
         <a href="./streamgraph.html" alt="Streamgraph"><img src="img/stream-thumb.png" height=200></img></a>
         <a href="./beeswarm.html"><img src="img/beeswarm-thumb.png" alt="Beeswarm" height=200></img></a>
         <a href="./indexed.html"><img src="img/indexed-thumb.png" alt="Indexed Chart" height=200></img></a>
       </p>
+
+      <div id="logo">
+        <a href="https://vis.ornl.gov/" target="_blank"><img src="img/vista-logo.png" height=70 alt="ORNL VISTA Vis Lab"></img></a>
+      </div>
     </center>
     <center>
       <h4>&copy; <a href="https://www.ornl.gov">Oak Ridge National Laboratory</a>

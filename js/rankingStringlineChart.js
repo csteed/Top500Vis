@@ -8,9 +8,9 @@ var rankingStringlineChart = function () {
   let chartData;
   let chartDiv;
 
-  let selectedLineColor = "mediumblue";
+  let foregroundLineColor = "mediumblue";
   let unselectedColor = "gray";
-  let normalColor = "#222";
+  let backgroundLineColor = "#222";
 
   let foreground;
   let background;
@@ -56,7 +56,8 @@ var rankingStringlineChart = function () {
         .style('top', `${margin.top - canvasMargin}px`)
         .style('left', `${margin.left - canvasMargin}px`);
       background = backgroundCanvas.node().getContext('2d');
-      background.strokeStyle = "rgba(0,0,0)";
+      // background.strokeStyle = "rgba(0,0,0)";
+      background.strokeStyle = backgroundLineColor;
       background.globalAlpha = defaultBackgroundAlpha;
       background.antialias = false;
       background.lineWidth = 1;
@@ -70,7 +71,8 @@ var rankingStringlineChart = function () {
         .style('top', `${margin.top - canvasMargin}px`)
         .style('left', `${margin.left - canvasMargin}px`);
       foreground = foregroundCanvas.node().getContext('2d');
-      foreground.strokeStyle = "rgba(0,100,160)";
+      // foreground.strokeStyle = "rgba(0,100,160)";
+      foreground.strokeStyle = foregroundLineColor;
       foreground.globalAlpha = 1;
       foreground.antialias = true;
       foreground.lineWidth = 2;
@@ -277,6 +279,7 @@ var rankingStringlineChart = function () {
 
   function path(data, ctx, halo=false) {
     if (halo) {
+      let previousStrokeStyle = ctx.strokeStyle;
       ctx.strokeStyle = "white"
       ctx.lineWidth = ctx.lineWidth * 4;
       ctx.beginPath();
@@ -294,7 +297,7 @@ var rankingStringlineChart = function () {
       });
 
       ctx.stroke();
-      ctx.strokeStyle = "rgba(0,100,160)";
+      ctx.strokeStyle = previousStrokeStyle;
       ctx.lineWidth = ctx.lineWidth / 4;
     }
 
@@ -330,9 +333,11 @@ var rankingStringlineChart = function () {
   function drawForeground() {
     foreground.clearRect(-canvasMargin, -canvasMargin, width + canvasMargin * 2, height + canvasMargin * 2);
     if (highlightedData) {
+      foreground.lineWidth = 1;
       highlightedData.map(d => path(d, foreground, false));
     }
     if (hoverData) {
+      foreground.lineWidth = 2;
       hoverData.map(d => path(d, foreground, true));
     }
     // foregroundData.map(d => path(d, foreground, foregroundData.length !== chartData.length));
