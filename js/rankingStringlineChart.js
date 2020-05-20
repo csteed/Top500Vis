@@ -50,31 +50,31 @@ var rankingStringlineChart = function () {
 
       const backgroundCanvas = chartDiv.append('canvas')
         .attr('id', 'background')
-        .attr('width', width + 1)
-        .attr('height', height + 1)
+        .attr('width', width + canvasMargin * 2)
+        .attr('height', height + canvasMargin * 2)
         .style('position', 'absolute')
-        .style('top', `${margin.top}px`)
-        .style('left', `${margin.left}px`);
+        .style('top', `${margin.top - canvasMargin}px`)
+        .style('left', `${margin.left - canvasMargin}px`);
       background = backgroundCanvas.node().getContext('2d');
       background.strokeStyle = "rgba(0,0,0)";
       background.globalAlpha = defaultBackgroundAlpha;
       background.antialias = false;
       background.lineWidth = 1;
-      background.translate(0.5, 0.5);
+      background.translate(canvasMargin + 0.5, canvasMargin + 0.5);
 
       const foregroundCanvas = chartDiv.append('canvas')
         .attr('id', 'foreground')
-        .attr('width', width + 1)
-        .attr('height', height + 1)
+        .attr('width', width + canvasMargin * 2)
+        .attr('height', height + canvasMargin * 2)
         .style('position', 'absolute')
-        .style('top', `${margin.top}px`)
-        .style('left', `${margin.left}px`);
+        .style('top', `${margin.top - canvasMargin}px`)
+        .style('left', `${margin.left - canvasMargin}px`);
       foreground = foregroundCanvas.node().getContext('2d');
       foreground.strokeStyle = "rgba(0,100,160)";
       foreground.globalAlpha = 1;
       foreground.antialias = true;
       foreground.lineWidth = 2;
-      foreground.translate(0.5, 0.5);
+      foreground.translate(canvasMargin + 0.5, canvasMargin + 0.5);
 
       const svg = chartDiv.append("svg")
           .attr("width", width + margin.left + margin.right)
@@ -328,7 +328,7 @@ var rankingStringlineChart = function () {
   }
 
   function drawForeground() {
-    foreground.clearRect(-1, -1, width + 2, height + 2);
+    foreground.clearRect(-canvasMargin, -canvasMargin, width + canvasMargin * 2, height + canvasMargin * 2);
     if (highlightedData) {
       highlightedData.map(d => path(d, foreground, false));
     }
@@ -339,7 +339,7 @@ var rankingStringlineChart = function () {
   }
 
   function drawBackground() {
-    background.clearRect(-1, -1, width + 2, height + 2);
+    background.clearRect(-canvasMargin, -canvasMargin, width + canvasMargin * 2, height + canvasMargin * 2);
     if (highlightedData.length > 0 || hoverData.length > 0) {
       background.globalAlpha = shadowBackgroundAlpha;
     } else {
