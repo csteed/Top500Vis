@@ -6,6 +6,7 @@
     <script src="js/d3.min.js"></script>
     <script src="js/d3-array.min.js"></script>
     <script src="js/d3-delaunay.min.js"></script>
+    <script src="js/rankingStringlineChart.js"></script>
 
     <style>
       body {
@@ -35,6 +36,7 @@
     </p>
 
     <h3>Controls:</h3>
+    
     <p>
       <label for="groupFieldSelect">Group Field: </label>
       <select id="groupFieldSelect" onChange="groupFieldSelectChanged()">
@@ -46,9 +48,13 @@
         <option>Segment</option>
         <option>Site</option>
       </select><br/><br/>
+
+      <label for="searchText">Type to Highlight Lines (use commas to highlight multiple):&nbsp;&nbsp;</label>
+      <input id="searchText" type="text"></input><br/><br/>
     </p>
 
     <div id="chart" style="position: relative;"></div>
+
   </body>
 
   <script>
@@ -66,7 +72,18 @@
     // var voronoi;
     var foregroundData;
     var backgroundData;
+    let chart;
     
+    const searchTextInputHandler = () => {
+      if (chart) {
+        const textValue = document.getElementById('searchText').value;
+        console.log(textValue);
+        chart.setHighlightStrings(textValue);
+      }
+    };
+
+    document.getElementById('searchText').addEventListener('input', searchTextInputHandler);
+
     const removeSpaces = (str) => {
       return str.replace(/\s+/g, '');
     };
@@ -162,6 +179,22 @@
     const createChart = () => {
       if (chartData) {
         d3.select('#chart').selectAll('*').remove();
+        const divWidth = document.getElementById('chart').clientWidth;
+        const height = 600;
+        const textValue = document.getElementById('searchText').value;
+
+        chart = rankingStringlineChart()
+          .margin(margin)
+          .width(divWidth)
+          .height(height)
+          .setHighlightStrings(textValue);
+        d3.select('#chart').call(chart, chartData);
+      }
+    }
+
+    const createChartOld = () => {
+      if (chartData) {
+        d3.select('#chart').selectAll('*').remove();
 
         const divWidth = document.getElementById('chart').clientWidth;
         const width = divWidth - margin.left - margin.right;
@@ -247,9 +280,6 @@
         
         svg.append("g")
           .call(xAxis);
-        // svg.append("g")
-        //   .call(d3.axisTop(x))
-        //   .call(g => g.select(".domain").remove());
 
         svg.append("g")
           // .call(d3.axisLeft(y).tickSize(0))
@@ -262,7 +292,6 @@
 
         function path(data, ctx, halo=false) {
           // draw line
-          // console.log(data);
           if (halo) {
             ctx.strokeStyle = "white"
             ctx.lineWidth = ctx.lineWidth * 4;
@@ -422,151 +451,6 @@
         };
           
         svg.append("g")
-          .call(tooltip);
-        
-      }
-    };
-
-    const createChartOld = () => {
-      if (chartData) {
-        d3.select('#chart').selectAll('*').remove();
-
-        const divWidth = document.getElementById('chart').clientWidth;
-        const width = divWidth - margin.left - margin.right;
-        const height = 800;
-        // const height = 500 * rowHeight;
-
-        const svg = d3.select('#chart').append("svg")
-          .attr("width", width + margin.left + margin.right)
-          .attr("height", height + margin.top + margin.bottom);
-
-        const g = svg.append("g")
-          .attr("transform", `translate(${margin.left},${margin.top})`);
-
-        const rankExtents = [
-          d3.min(chartData, d => d3.min(d.values, v => v.value)),
-          d3.max(chartData, d => d3.max(d.values, v => v.value))
-        ];
-        console.log(rankExtents);
-
-        const line = d3.line()
-          .curve(d3.curveLinear)
-          .x(d => x(d.date))
-          .y(d => y(d.value));
-          // .defined(d => !isNaN(d))
-          // .x((d,i) => x(dates[i]))
-          // .y(d => y(d));
-
-        const x = d3.scalePoint()
-          .domain(dates)
-          .rangeRound([0, width]);
-
-        const y = d3.scaleLinear()
-          .domain([1,500]).nice()
-          .range([0, height]);
-        
-        g.append("g")
-          .call(d3.axisTop(x))
-          .call(g => g.select(".domain").remove());
-
-        g.append("g")
-          .call(d3.axisLeft(y).tickSize(0))
-          .call(g => g.select(".domain").remove());
-
-        const string = g.append("g")
-            .attr("stroke-width", 1.)
-          .selectAll("g")
-          .data(chartData)
-          .join("g");
-
-        string.append("path")
-          .attr("fill", "none")
-          .attr("stroke", "black")
-          .attr("stroke-linejoin", "round")
-          .attr("stroke-linecap", "round")
-          // .style("mix-blend-mode", "multiply")
-          .attr("stroke-opacity", 0.3)
-          .attr("d", d => line(d.values));
-
-        // const dot = string.append("g")
-        //     .attr("stroke", "white")
-        //     .attr("fill", "black")
-        //     .attr("fill-opacity", 0.3)
-        //   .selectAll("circle")
-        //   .data(d => d.values)
-        //   .join("circle")
-        //     .attr("transform", d => `translate(${x(d.date)},${y(d.value)})`)
-        //     .attr("r", 2.5);
-        // console.log(dot);
-        
-        const voronoi = d3.Delaunay
-          .from(ranks, d => x(d.rank.date), d => y(d.rank.value))
-          .voronoi([0, 0, width, height]);
-        
-        const tooltip = g => {
-          const tooltip = g.append("g")
-            .style("font", "10px sans-serif");
-
-          const path = tooltip.append("path")
-            .attr("fill", "white");
-
-          const text = tooltip.append("text");
-
-          const line1 = text.append("tspan")
-            .attr("x", 0)
-            .attr("y", 0)
-            .style("font-weight", "bold");
-          
-          const line2 = text.append("tspan")
-            .attr("x", 0)
-            .attr("y", "1.1em");
-
-          const line3 = text.append("tspan")
-            .attr("x", 0)
-            .attr("y", "2.2em");
-
-          g.append("g")
-              .attr("fill", "none")
-              .attr("pointer-events", "all")
-            .selectAll("path")
-            .data(ranks)
-            .join("path")
-              .attr("d", (d, i) => voronoi.renderCell(i))
-              .on("mouseout", () => tooltip.style("display", "none"))
-              .on("mouseover", d => {
-                // console.log(d);
-                tooltip.style("display", null);
-                line1.text(`${d.name.name}`);
-                line2.text(`${'#'}${d.rank.value}`);
-                line3.text(`${d.rank.date}`);
-                path.attr("stroke", "black");
-                const box = text.node().getBBox();
-                path.attr("d", `
-                  M${box.x - 10},${box.y - 10}
-                  H${box.width / 2 - 5}l5,-5l5,5
-                  H${box.width + 10}
-                  v${box.height + 20}
-                  h-${box.width + 20}
-                  z
-                `);
-                tooltip.attr("transform", `translate(${
-                  x(d.rank.date) - box.width / 2},${
-                  y(d.rank.value) + 28
-                })`);
-                // string.attr("stroke", "#ddd");
-                string.selectAll("path")
-                  // .attr("stroke", s => s.name === d.name.name ? "black" : "#ddd")
-                  .attr("stroke-opacity", s => s.name === d.name.name ? null : 0.2)
-                  .attr("stroke-width", s => s.name === d.name.name ? 2 : null);
-                string.selectAll("path")
-                  .filter(s => s.name === d.name.name).raise();
-                // string.selectAll("circle")
-                //   .attr("fill-opacity", s => s.name === d.name.name ? 'none' : 0.2)
-                //   .filter(s => s.name === d.name.name).raise();
-              });
-        };
-          
-        g.append("g")
           .call(tooltip);
         
       }
