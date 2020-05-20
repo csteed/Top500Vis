@@ -52,11 +52,13 @@
   </body>
 
   <script>
-    let parseTime = d3.timeParse("%Y-%m");
+    const parseTime = d3.timeParse("%Y-%m");
+    const formatDate = d3.timeFormat("%Y %b");
+    const formatTooltipDate = d3.timeFormat("%B %Y");
     let fileData;
     let chartData;
     let svg;
-    const margin = {top: 20, right: 20, bottom: 30, left: 40};
+    const margin = {top: 60, right: 20, bottom: 60, left: 40};
     const rowHeight = 12;
 
     var dates;
@@ -163,7 +165,7 @@
 
         const divWidth = document.getElementById('chart').clientWidth;
         const width = divWidth - margin.left - margin.right;
-        const height = 800;
+        const height = 600;
 
         const backgroundCanvas = d3.select('#chart').append('canvas')
           .attr('id', 'background')
@@ -207,26 +209,80 @@
           .domain(d3.extent(dates))
           .rangeRound([0, width]);
 
+        const xAxis = g => g
+            .style("font", "10px sans-serif")
+          .selectAll("g")
+          .data(dates)
+          .join("g")
+            .attr("transform", d => `translate(${x(d)},0)`)
+            .call(g => g.append("line")
+              .attr("y1", -6)
+              .attr("y2", 0)
+              .attr("stroke", "black"))
+            .call(g => g.append("line")
+              .attr("y1", height)
+              .attr("y2", height + 6)
+              .attr("stroke", "black"))
+            .call(g => g.append("line")
+              .attr("y1", 0)
+              .attr("y2", height)
+              .attr("stroke-opacity", 0.3)
+              .attr("stroke-dasharray", "1.5,2")
+              .attr("stroke", "black"))
+            .call(g => g.append("text")
+              .attr("transform", `rotate(-90)`)
+              .attr("x", 10)
+              .attr("dy", "0.35em")
+              .text(d => formatDate(d)))
+            .call(g => g.append("text")
+              .attr("text-anchor", "end")
+              .attr("transform", `translate(0, ${height}) rotate(-90)`)
+              .attr("x", -10)
+              .attr("dy", "0.35em")
+              .text(d => formatDate(d)));
+
         const y = d3.scaleLinear()
-          .domain([1,500]).nice()
+          .domain([1,500])
           .range([0, height]);
         
         svg.append("g")
-          .call(d3.axisTop(x))
-          .call(g => g.select(".domain").remove());
+          .call(xAxis);
+        // svg.append("g")
+        //   .call(d3.axisTop(x))
+        //   .call(g => g.select(".domain").remove());
 
         svg.append("g")
           // .call(d3.axisLeft(y).tickSize(0))
-          .call(d3.axisLeft(y))
+          .call(d3.axisLeft(y).tickFormat(x => `#${x}`))
           .call(g => g.select(".domain").remove());
 
         foregroundData = chartData;
         backgroundData = [];
         drawLines();
 
-        function path(data, ctx) {
+        function path(data, ctx, halo=false) {
           // draw line
           // console.log(data);
+          if (halo) {
+            ctx.strokeStyle = "white"
+            ctx.lineWidth = ctx.lineWidth * 4;
+            ctx.beginPath();
+            data.values.map((d,i) => {
+              if (i === 0) {
+                // ctx.moveTo(x(d.date), y(d.value));
+                ctx.moveTo(x(d.date)-2, y(d.value));
+                ctx.lineTo(x(d.date)+2, y(d.value));
+              } else {
+                // ctx.lineTo(x(d.date), y(d.value));
+                ctx.lineTo(x(d.date)-2, y(d.value));
+                ctx.lineTo(x(d.date)+2, y(d.value));
+              }
+            });
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(0,100,160)";
+            ctx.lineWidth = ctx.lineWidth / 4;
+          }
+
           ctx.beginPath();
           data.values.map((d,i) => {
             if (i === 0) {
@@ -248,12 +304,12 @@
         }
 
         function drawForeground() {
-          foreground.clearRect(0, 0, width + 1, height + 1);
-          foregroundData.map(d => path(d, foreground));
+          foreground.clearRect(-1, -1, width + 2, height + 2);
+          foregroundData.map(d => path(d, foreground, foregroundData.length !== chartData.length));
         }
 
         function drawBackground() {
-          background.clearRect(0, 0, width + 1, height + 1);
+          background.clearRect(-1, -1, width + 2, height + 2);
           backgroundData.map(d => path(d, background));
         }
 
@@ -302,8 +358,8 @@
               .on("mouseover", d => {
                 tooltip.style("display", null);
                 line1.text(`${d.name.name}`);
-                line2.text(`${'#'}${d.rank.value}`);
-                line3.text(`${d.rank.date}`);
+                line2.text(`Rank: #${d.rank.value}`);
+                line3.text(`${formatTooltipDate(d.rank.date)}`);
                 path.attr("stroke", "black");
                 const box = text.node().getBBox();
                 
