@@ -56,6 +56,7 @@
     </p>
     <ul>
       <li><b>Group Field:</b> Select the field that will be used to create the string lines</li>
+      <li><b>Rank Filter:</b> Set the maximum rank to filter out lower ranked systems</li>
       <li><b>Highlight Lines:</b> Lines that include letters typed here will be highlighted. Use commas to search over multiple keywords.</li>
     </ul>
 
@@ -71,6 +72,15 @@
         <option>Region</option>
         <option>Segment</option>
         <option>Site</option>
+      </select><br/><br/>
+
+      <label for="rankFilterSelect">Rank Filter: </label>
+      <select id="rankFilterSelect" onChange="rankFilterSelectChanged()">
+        <option selected>500</option>
+        <option>200</option>
+        <option>100</option>
+        <option>50</option>
+        <option>20</option>
       </select><br/><br/>
 
       <label for="searchText">Type to Highlight Lines (use commas to highlight multiple):&nbsp;&nbsp;</label>
@@ -98,22 +108,22 @@
     const margin = {top: 60, right: 20, bottom: 60, left: 40};
     const rowHeight = 12;
 
-    var dates;
-    var ranks;
-    // var voronoi;
-    var foregroundData;
-    var backgroundData;
-    let chart;
+    // var ranks;
     
     const searchTextInputHandler = () => {
       if (chart) {
         const textValue = document.getElementById('searchText').value;
-        console.log(textValue);
         chart.setHighlightStrings(textValue);
       }
     };
 
     document.getElementById('searchText').addEventListener('input', searchTextInputHandler);
+
+    const rankFilterSelectChanged = () => {
+      const selectedRankFilter = getSelectedRankFilter();
+      loadData();
+      createChart();
+    }
 
     const removeSpaces = (str) => {
       return str.replace(/\s+/g, '');
@@ -124,16 +134,18 @@
       return select.options[select.selectedIndex].text;
     };
 
+    const getSelectedRankFilter = () => {
+      const select = document.getElementById('rankFilterSelect');
+      return +select.options[select.selectedIndex].text;
+    }
+
     const groupFieldSelectChanged = () => {
       loadData();
       createChart();
     };
 
     const loadData = () => {
-      // console.log(fileData);
-
       const selectedGroupField = getSelectedGroupField().toLowerCase();
-      // console.log(`Selected Group Field: ${selectedGroupField}`);
 
       let groupValue;
       if (selectedGroupField === 'computer') {
@@ -142,12 +154,19 @@
         groupValue = d => d[selectedGroupField];
       }
 
+      // filter by rank
+      var filteredFileData = fileData.slice();
+      const selectedRankFilter = getSelectedRankFilter();
+      if (selectedRankFilter !== 500) {
+        filteredFileData = filteredFileData.filter(d => {
+          return d.rank <= selectedRankFilter;
+        });
+      }
+
       const nestedGroups = d3.nest()
         .key(groupValue).sortKeys(d3.ascending)
         .sortValues((a,b) => d3.ascending(a.date, b.date))
-        .entries(fileData);
-
-      // console.log(nestedGroups);
+        .entries(filteredFileData);
 
       dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
       
@@ -182,29 +201,9 @@
           }
         });
         d.values = newValues;
-      })
-      console.log(chartData);
+      });
 
       dates = dates.map(d => parseTime(d));
-      console.log(dates);
-
-      ranks = d3.merge(chartData.map(d => d.values.map(s => ({name: d, rank: s}))));
-      console.log(ranks);
-      // nestedGroups.forEach(groupNode => {
-      //   names.push(groupNode.key);
-      //   let groupValues = new Array(dates.length);
-      //   groupNode.values.forEach(d => {
-      //     const dateIndex = dates.indexOf(d.date);
-      //     if (isNaN(groupValues[dateIndex])) {
-      //       groupValues[dateIndex] = d.rank;
-      //     } else {
-      //       if (d.rank < groupValues[dateIndex]) {
-      //         groupValues[dateIndex] = d.rank;
-      //       }
-      //     }
-      //   });
-      //   values.push(groupValues);
-      // });
     };
 
     const createChart = () => {
@@ -224,273 +223,7 @@
         d3.select('#chart').call(chart, chartData);
       }
     }
-
-    const createChartOld = () => {
-      if (chartData) {
-        d3.select('#chart').selectAll('*').remove();
-
-        const divWidth = document.getElementById('chart').clientWidth;
-        const width = divWidth - margin.left - margin.right;
-        const height = 700;
-
-        
-
-        const backgroundCanvas = d3.select('#chart').append('canvas')
-          .attr('id', 'background')
-          .attr('width', width + 1)
-          .attr('height', height + 1)
-          .style('position', 'absolute')
-          .style('top', `${margin.top}px`)
-          .style('left', `${margin.left}px`);
-        const background = backgroundCanvas.node().getContext('2d');
-        background.strokeStyle = "rgba(0,0,0)";
-        background.globalAlpha = 0.1;
-        background.antialias = true;
-        background.lineWidth = 1;
-
-        const foregroundCanvas = d3.select('#chart').append('canvas')
-          .attr('id', 'foreground')
-          .attr('width', width + 1)
-          .attr('height', height + 1)
-          .style('position', 'absolute')
-          .style('top', `${margin.top}px`)
-          .style('left', `${margin.left}px`);
-        const foreground = foregroundCanvas.node().getContext('2d');
-        foreground.strokeStyle = "rgba(0,100,160)";
-        foreground.globalAlpha = 0.8;
-        foreground.antialias = true;
-        foreground.lineWidth = 1;
-        foreground.translate(0.5, 0.5);
-
-        const svg = d3.select('#chart').append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .style('position', 'absolute')
-          .append('svg:g')
-            .attr("transform", `translate(${margin.left},${margin.top})`);
-
-        // const x = d3.scalePoint()
-        //   .domain(dates)
-        //   .padding(0.5)
-        //   .rangeRound([0, width]);
-        const x = d3.scaleTime()
-          .domain(d3.extent(dates))
-          .rangeRound([0, width]);
-
-        const xAxis = g => g
-            .style("font", "10px sans-serif")
-          .selectAll("g")
-          .data(dates)
-          .join("g")
-            .attr("transform", d => `translate(${x(d)},0)`)
-            .call(g => g.append("line")
-              .attr("y1", -6)
-              .attr("y2", 0)
-              .attr("stroke", "black"))
-            .call(g => g.append("line")
-              .attr("y1", height)
-              .attr("y2", height + 6)
-              .attr("stroke", "black"))
-            .call(g => g.append("line")
-              .attr("y1", 0)
-              .attr("y2", height)
-              .attr("stroke-opacity", 0.3)
-              .attr("stroke-dasharray", "1.5,2")
-              .attr("stroke", "black"))
-            .call(g => g.append("text")
-              .attr("transform", `rotate(-90)`)
-              .attr("x", 10)
-              .attr("dy", "0.35em")
-              .text(d => formatDate(d)))
-            .call(g => g.append("text")
-              .attr("text-anchor", "end")
-              .attr("transform", `translate(0, ${height}) rotate(-90)`)
-              .attr("x", -10)
-              .attr("dy", "0.35em")
-              .text(d => formatDate(d)));
-
-        const y = d3.scaleLinear()
-          .domain([1,500])
-          .range([0, height]);
-        
-        svg.append("g")
-          .call(xAxis);
-
-        svg.append("g")
-          // .call(d3.axisLeft(y).tickSize(0))
-          .call(d3.axisLeft(y).tickFormat(x => `#${x}`))
-          .call(g => g.select(".domain").remove());
-
-        foregroundData = chartData;
-        backgroundData = [];
-        drawLines();
-
-        function path(data, ctx, halo=false) {
-          // draw line
-          if (halo) {
-            ctx.strokeStyle = "white"
-            ctx.lineWidth = ctx.lineWidth * 4;
-            ctx.beginPath();
-            data.values.map((d,i) => {
-              if (i === 0) {
-                // ctx.moveTo(x(d.date), y(d.value));
-                ctx.moveTo(x(d.date)-2, y(d.value));
-                ctx.lineTo(x(d.date)+2, y(d.value));
-              } else {
-                // ctx.lineTo(x(d.date), y(d.value));
-                ctx.lineTo(x(d.date)-2, y(d.value));
-                ctx.lineTo(x(d.date)+2, y(d.value));
-              }
-            });
-            ctx.stroke();
-            ctx.strokeStyle = "rgba(0,100,160)";
-            ctx.lineWidth = ctx.lineWidth / 4;
-          }
-
-          ctx.beginPath();
-          data.values.map((d,i) => {
-            if (i === 0) {
-              // ctx.moveTo(x(d.date), y(d.value));
-              ctx.moveTo(x(d.date)-2, y(d.value));
-              ctx.lineTo(x(d.date)+2, y(d.value));
-            } else {
-              // ctx.lineTo(x(d.date), y(d.value));
-              ctx.lineTo(x(d.date)-2, y(d.value));
-              ctx.lineTo(x(d.date)+2, y(d.value));
-            }
-          });
-          ctx.stroke();
-        }
-
-        function drawLines() {
-          drawBackground();
-          drawForeground();
-        }
-
-        function drawForeground() {
-          foreground.clearRect(-1, -1, width + 2, height + 2);
-          foregroundData.map(d => path(d, foreground, foregroundData.length !== chartData.length));
-        }
-
-        function drawBackground() {
-          background.clearRect(-1, -1, width + 2, height + 2);
-          backgroundData.map(d => path(d, background));
-        }
-
-        const voronoi = d3.Delaunay
-          .from(ranks, d => x(d.rank.date), d => y(d.rank.value))
-          .voronoi([0, 0, width, height]);
-        
-        const tooltip = g => {
-          const tooltip = g.append("g")
-            .style("font", "10px sans-serif");
-
-          const path = tooltip.append("path")
-            .attr("fill", "white")
-            .attr("fill-opacity", 0.7);
-
-          const text = tooltip.append("text");
-
-          const line1 = text.append("tspan")
-            .attr("x", 0)
-            .attr("y", 0)
-            .style("font-weight", "bold");
-          
-          const line2 = text.append("tspan")
-            .attr("x", 0)
-            .attr("y", "1.1em");
-
-          const line3 = text.append("tspan")
-            .attr("x", 0)
-            .attr("y", "2.2em");
-
-          g.append("g")
-              .attr("fill", "none")
-              .attr("pointer-events", "all")
-            .selectAll("path")
-            .data(ranks)
-            .join("path")
-              .attr("d", (d, i) => voronoi.renderCell(i))
-              .on("mouseout", () => {
-                tooltip.style("display", "none")
-                foreground.globalAlpha = 0.4;
-                foreground.lineWidth = 1;
-                foregroundData = chartData;
-                backgroundData = [];
-                drawLines();
-              })
-              .on("mouseover", d => {
-                tooltip.style("display", null);
-                line1.text(`${d.name.name}`);
-                line2.text(`Rank: #${d.rank.value}`);
-                line3.text(`${formatTooltipDate(d.rank.date)}`);
-                path.attr("stroke", "black");
-                const box = text.node().getBBox();
-                
-                if (x(d.rank.date) + box.width + 20 > width) {
-                  // console.log('tooltip clipped on right side');
-                    path.attr("d", `
-                    M${box.x - 10},${box.y - 10}
-                    h${box.width + 20}
-                    V${box.y + (box.height / 2 - 5)}l5,5l-5,5
-                    V${box.y + (box.height + 10)}
-                    h-${box.width + 20}
-                    z
-                  `);
-                  tooltip.attr("transform", `translate(${
-                    x(d.rank.date) - box.width - 24 },${
-                    y(d.rank.value) - box.height / 2 - box.y
-                  })`); 
-                } else {
-                  path.attr("d", `
-                    M${box.x - 10},${box.y - 10}
-                    V${box.y + (box.height / 2 - 5)}l-5,5l5,5
-                    V${box.y + (box.height + 10)}
-                    h${box.width + 20}
-                    V${box.y - 10}
-                    z
-                  `);
-                  tooltip.attr("transform", `translate(${
-                    x(d.rank.date) + 24 },${
-                    y(d.rank.value) - box.height / 2 - box.y
-                  })`);  
-                }
-                
-                // The original tooltip was below the data node
-                // path.attr("d", `
-                //   M${box.x - 10},${box.y - 10}
-                //   H${box.width / 2 - 5}l5,-5l5,5
-                //   H${box.width + 10}
-                //   v${box.height + 20}
-                //   h-${box.width + 20}
-                //   z
-                // `);
-                // tooltip.attr("transform", `translate(${
-                //   x(d.rank.date) - box.width / 2},${
-                //   y(d.rank.value) + 28
-                // })`);
-
-                foregroundData = [];
-                backgroundData = [];
-                foreground.globalAlpha = 1.;
-                foreground.lineWidth = 2;
-                chartData.map(s => {
-                  if (s.name === d.name.name) {
-                    foregroundData.push(s);
-                  } else {
-                    backgroundData.push(s);
-                  }
-                });
-                drawLines();
-              });
-        };
-          
-        svg.append("g")
-          .call(tooltip);
-        
-      }
-    };
-        
+    
     d3.csv(
       "output.csv",
       ({

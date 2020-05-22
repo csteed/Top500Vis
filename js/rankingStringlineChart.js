@@ -6,6 +6,7 @@ var rankingStringlineChart = function () {
   var highlightStrings = [];
 
   let chartData;
+  let ranks;
   let chartDiv;
 
   let foregroundLineColor = "mediumblue";
@@ -28,6 +29,18 @@ var rankingStringlineChart = function () {
   function chart(selection, data) {
     chartData = data.slice();
     chartDiv = selection;
+
+    ranks = d3.merge(chartData.map(d => d.values.map(s => ({name: d, rank: s}))));
+    // console.log(ranks);
+
+    chartData.map(d => {
+      const values = d.values.map(v => v.value);
+      d.mean = Math.round(d3.mean(values));
+      d.min = d3.min(values);
+      d.max = d3.max(values);
+      // d.mean = Math.round(d3.mean(d.values, v => v.value));
+    });
+    // console.log(chartData);
     drawChart();
   }
 
@@ -86,7 +99,7 @@ var rankingStringlineChart = function () {
           .attr("transform", `translate(${margin.left},${margin.top})`);
       
       const dates = [...new Set(d3.merge(chartData.map(d => d.values.map(v => v.date.getTime()))))].map(d => new Date(d)).sort(d3.ascending);
-      console.log(dates);
+      // console.log(dates);
         
       x = d3.scaleTime()
         .domain(d3.extent(dates))
@@ -125,7 +138,7 @@ var rankingStringlineChart = function () {
             .text(d => formatDate(d)));
 
       y = d3.scaleLinear()
-        .domain([1,500])
+        .domain([1, d3.max(ranks, d => d.rank.value)])
         .range([0, height]);
 
       // y.ticks(y.ticks().unshift(1));
@@ -133,7 +146,7 @@ var rankingStringlineChart = function () {
       // console.log(y.ticks());
       let ticks = y.ticks();
       ticks.unshift(1);
-      console.log(ticks);
+      // console.log(ticks);
 
       const yAxis = g => g
         .call(d3.axisLeft(y)
@@ -202,8 +215,8 @@ var rankingStringlineChart = function () {
             .on("mouseover", d => {
               tooltip.style("display", null);
               line1.text(`${d.name.name}`);
-              line2.text(`Rank: #${d.rank.value}`);
-              line3.text(`${formatTooltipDate(d.rank.date)}`);
+              line2.text(`Rank (${formatTooltipDate(d.rank.date)}): #${d.rank.value}`);
+              line3.text(`Mean: ${d.name.mean}, Min: ${d.name.min}, Max: ${d.name.max}`);
               path.attr("stroke", "black");
               const box = text.node().getBBox();
               
