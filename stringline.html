@@ -68,10 +68,14 @@
         <option selected>Country</option>
         <option>Continent</option>
         <option>Computer</option>
+        <option>Interconnect_Family</option>
         <option>Manufacturer</option>
+        <option>Operating_System</option>
         <option>Region</option>
         <option>Segment</option>
         <option>Site</option>
+        <option>System_Family</option>
+
       </select><br/><br/>
 
       <label for="rankFilterSelect">Rank Filter: </label>
@@ -146,6 +150,7 @@
 
     const loadData = () => {
       const selectedGroupField = getSelectedGroupField().toLowerCase();
+      console.log(selectedGroupField);
 
       let groupValue;
       if (selectedGroupField === 'computer') {
@@ -225,9 +230,9 @@
     }
     
     d3.csv(
-      "output.csv",
+      "data/new_output.csv",
       ({
-        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region
+        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region, interconnect_family, operating_system, system_family
       }) => ({
         // date: parseTime(date),
         date,
@@ -242,7 +247,10 @@
         country: country,
         continent: continent,
         region: region,
-        power: +power
+        power: +power,
+        interconnect_family,
+        operating_system,
+        system_family
       })
     )
       .then(function(data) {
