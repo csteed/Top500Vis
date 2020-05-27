@@ -5,6 +5,7 @@
     <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
     <script src="js/d3.min.js"></script>
     <script src="js/d3-array.min.js"></script>
+    <script src="js/heatmapChart.js"></script>
 
     <style>
       body {
@@ -74,15 +75,10 @@
     let parseTime = d3.timeParse("%Y-%m");
     let fileData;
     let chartData;
-    let svg;
-    const margin = {top: 20, right: 20, bottom: 30, left: 450};
+    let chart;
+    const margin = {top: 60, right: 20, bottom: 30, left: 300};
     const rowHeight = 12;
 
-    let names;
-    let values;
-    let dates;
-
-    
     const removeSpaces = (str) => {
       return str.replace(/\s+/g, '');
     };
@@ -98,10 +94,10 @@
     };
 
     const loadData = () => {
-      console.log(fileData);
+      // console.log(fileData);
 
       const selectedGroupField = getSelectedGroupField().toLowerCase();
-      console.log(`Selected Group Field: ${selectedGroupField}`);
+      // console.log(`Selected Group Field: ${selectedGroupField}`);
 
       let groupValue;
       if (selectedGroupField === 'computer') {
@@ -115,13 +111,13 @@
         .sortValues((a,b) => d3.ascending(a.date, b.date))
         .entries(fileData);
 
-      console.log(nestedGroups);
+      // console.log(nestedGroups);
 
-      dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
+      const dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
       console.log(dates);
 
-      names = [];
-      values = [];
+      const names = [];
+      const values = [];
       nestedGroups.forEach(groupNode => {
         names.push(groupNode.key);
         let groupValues = new Array(dates.length);
@@ -139,94 +135,58 @@
         values.push(groupValues);
       });
 
-      console.log(names);
-      console.log(values);
-/*
-      const nestedComputers = d3.nest()
-        .key(d => d.site).sortKeys(d3.ascending)
-        .key(d => d.computer).sortKeys(d3.ascending)
-        .sortValues((a,b) => d3.ascending(a.date, b.date))
-        .entries(fileData);
+      chartData = {
+        dates: dates.map(d => parseTime(d)),
+        rows: names.map((d,i) => {
+          return {
+            name: d,
+            start: values[i].findIndex(d => !isNaN(d)),
+            end: findEndIndex(values[i]),
+            values: values[i]
+          }
+        })
+      }
 
-      console.log(nestedComputers);
-
-      dates = [...new Set(fileData.map(d => d.date.getTime()))].sort(d3.ascending);
-      
-      names = [];
-      values = [];
-      nestedComputers.forEach(siteNode => {
-        siteNode.values.forEach(computerNode => {
-          names.push(`${siteNode.key}:${computerNode.key}`);
-          let computerValues = new Array(dates.length);
-
-          computerNode.values.forEach(d => {
-            const dateIndex = dates.indexOf(d.date.getTime());
-            if (isNaN(computerValues[dateIndex])) {
-              computerValues[dateIndex] = d.rank;
-            } else {
-              // console.log('duplicate date for entity');
-              if (d.rank > computerValues[dateIndex]) {
-                computerValues[dateIndex] = d.rank;
-              }
-            }
-            
-          });
-          // console.log(computerValues);
-          values.push(computerValues);
-        });
-      });
-
-      dates = dates.map(d => new Date(d));
-      dates.push(new Date(2020, 6, 1));
-
-      names = names.slice(0, 1000);
-      values = values.slice(0, 1000);
-      console.log(dates);
-      console.log(names);
-      console.log(values);
-*/
-      // const nestedDates = d3.nest()
-      //   .key(d => d.date)
-      //   .entries(fileData);
-      // // console.log(nestedDates);
-
-      // chartData = [];
-      // nestedDates.forEach(dateNode => {
-      //   const nestedCountries = d3.nest()
-      //     .key(d => d.country)
-      //     .sortValues((a,b) => {return b.rmax - b.rmax})
-      //     .entries(dateNode.values);
-      //   // console.log(nestedCountries);
-
-      //   const countryValues = nestedCountries.map(d => {
-      //     return {
-      //       date: new Date(dateNode.key),
-      //       name: d.key,
-      //       // category: d.values[0].segment,
-      //       value: d.values[0].rmax
-      //     }
-      //   }).sort((a,b) => d3.descending(a.value,b.value));
-      //   // console.log(countryValues);
-      //   chartData = chartData.concat(countryValues);
-      // });
-
-      // let nestedNames = d3.nest()
-      //   .key(d => d.name)
-      //   .sortValues((a,b) => d3.ascending(a.date, b.date))
-      //   .entries(chartData);
-      // nestedNames.sort((a,b) => d3.descending(a.values.length,b.values.length));
-      // // console.log(nestedNames);
-      // let topNames = nestedNames.map(d => d.key).splice(0, 20);
-      // // console.log(topNames);
-
-      // chartData = chartData.filter(d => {
-      //   return topNames.includes(d.name);
-      //   // return (d.name === "United States" || d.name === "China" || d.name === "Japan");
-      // });
-      // console.log(chartData);
+      chartData.rows.sort(orders.Duration);
+      console.log(chartData);
     };
 
+    const findEndIndex = (d) => {
+      for (let i = d.length; i >= 0; i--) {
+        if (d[i]) {
+          return i;
+        }
+      }
+      return -1;
+    }
+    const orders = ({
+      Start: (a, b) => d3.ascending(a.start, b.start),
+      End: (a, b) => d3.descending(a.end, b.end),
+      Duration: (a, b) => {
+        if (a.end - a.start === b.end - b.start) {
+          return orders.Start(a,b);
+        } else {
+          return d3.descending(a.end - a.start, b.end - b.start)
+        }
+      }
+    });
+
     const createChart = () => {
+      d3.select('#chart').selectAll('*').remove();
+      if (chartData) {
+        const divWidth = document.getElementById('chart').clientWidth;
+        const height = chartData.rows.length * rowHeight + margin.top + margin.bottom;
+        console.log(height);
+
+        chart = heatmapChart()
+          .margin(margin)
+          .width(divWidth)
+          .height(height);
+        d3.select('#chart').call(chart, chartData);
+      }
+    };
+
+    const createChartOld = () => {
       if (names && values && dates) {
         d3.select('#chart').selectAll('*').remove();
 
