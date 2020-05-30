@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<html>
+  <head>
+    <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
+    <script src="js/d3.min.js"></script>
+    <script src="js/d3-array.min.js"></script>
+    <script src="js/pcpChart.js"></script>
+
+    <style>
+      body {
+        font: 12px sans-serif;
+        /* margin: 4px 20px 0px 20px; */
+        /* background: gray; */
+        background-color: whitesmoke;
+      }
+
+      .top {
+        background-color: whitesmoke;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        width: 100%;
+      }
+
+      .main {
+        margin-top: 400px;
+      }
+
+      table {
+        width: 100%;
+      }
+
+      #logo {
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr>
+        <td>
+          <h2>Supercomputing <a href="http://top500.org" target="_blank">Top500</a> List Heatmap Visualization</h2>
+          <strong>Data Source:</strong> <a href="http://top500.org" target="_blank">Top500 List</a> from the <a href="https://www.icl.utk.edu/" target="_blank">Univ. of Tennessee Innovative Computing Laboratory</a> <br/>
+          <strong>Author:</strong> <a href="https://csteed.com" target="_blank">Chad A. Steed</a>, <a href="https://vis.ornl.gov" target="_blank">VISTA Lab</a>, <a href="https://www.ornl.gov/division/csmd" target="_blank">Computer Science and Mathematics Division</a>, <a href="https://ornl.gov" target="_blank">Oak Ridge National Laboratory</a>
+          <br/><br/>
+        </td>
+
+        <td id="logo"><a href="https://vis.ornl.gov/" target="_blank"><img src="img/vista-logo.png" height=70 alt="ORNL VISTA Vis Lab"></img></a></td>
+      </tr>
+    </table>
+
+    <h3>Description:</h3>
+    <p>
+      This pages presents the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a heatmap, based on the selected grouping field. When multiple systems are ranked for a ranking release (denoted by the x-axis ticks), the highest ranking is preserved (e.g., if grouping by Country, a colored rectangle represents the highest rank for each Top500 release).
+    </p>
+    <ul>
+      <li><b>Group Field:</b> Select the field that will be used to create the string lines</li>
+      <li><b>Rank Filter:</b> Set the maximum rank to filter out lower ranked systems</li>
+      <li><b>Sort By:</b> Determines how the rows are sorted</li>
+      <li><b>Row Name Filter:</b> Removes all rows except those that include letters typed here. Use commas to search over multiple keywords.</li>
+    </ul>
+
+    <h3>Controls:</h3>
+    <p>
+      <label for="groupFieldSelect">Group Field: </label>
+      <select id="groupFieldSelect" onChange="groupFieldSelectChanged()">
+        <option selected>Country</option>
+        <option>Continent</option>
+        <option>Computer</option>
+        <option>Interconnect_Family</option>
+        <option>Manufacturer</option>
+        <option>Operating_System</option>
+        <option>Region</option>
+        <option>Segment</option>
+        <option>Site</option>
+        <option>System_Family</option>
+      </select><br/><br/>
+
+      <label for="rankFilterSelect">Rank Filter: </label>
+      <select id="rankFilterSelect" onChange="rankFilterSelectChanged()">
+        <option selected>500</option>
+        <option>200</option>
+        <option>100</option>
+        <option>50</option>
+        <option>20</option>
+      </select><br/><br/>
+
+      <label for="searchText">Row Name Filter:&nbsp;&nbsp;</label>
+      <input id="searchText" type="text"></input>
+    </p>
+
+    <div id="chart" style="position: relative;"></div>
+
+    <center>
+      <h4>&copy; <a href="https://www.ornl.gov">Oak Ridge National Laboratory</a>
+          <script type="text/javascript">
+              document.write(new Date().getFullYear());
+          </script>
+      </h4>
+    </center>
+  </body>
+
+  <script>
+    let parseTime = d3.timeParse("%Y-%m");
+    let fileData;
+    let chartData;
+    let chart;
+    const margin = {top: 40, right: 30, bottom: 20, left: 30};
+
+    const removeSpaces = (str) => {
+      return str.replace(/\s+/g, '');
+    };
+
+    const searchTextInputHandler = () => {
+      if (chart) {
+        const textValue = document.getElementById('searchText').value;
+        loadData();
+        createChart();
+      }
+    };
+
+    document.getElementById('searchText').addEventListener('input', searchTextInputHandler);
+
+    const rankFilterSelectChanged = () => {
+      loadData();
+      createChart();
+    }
+
+    const rowSortSelectChanged = () => {
+      loadData();
+      createChart();
+    }
+
+    const getSelectedRankFilter = () => {
+      const select = document.getElementById('rankFilterSelect');
+      return +select.options[select.selectedIndex].text;
+    }
+
+    const getSelectedGroupField = () => {
+      const select = document.getElementById('groupFieldSelect');
+      return select.options[select.selectedIndex].text;
+    };
+
+    const groupFieldSelectChanged = () => {
+      loadData();
+      createChart();
+    };
+
+    const loadData = () => {
+      console.log(fileData);
+
+      chartData = {
+        dimensions: [
+          {name: 'rank', type: 'numerical'},
+          // {name: 'country', type: 'categorical'},
+          {name: 'rmax', type: 'numerical'},
+          // {name: 'site', type: 'categorical'},
+          {name: 'rpeak', type: 'numerical'}
+        ],
+        tuples: fileData.map(d => {
+          return {
+            rank: d.rank,
+            rmax: d.rmax,
+            rpeak: d.rpeak
+          };
+        })
+      }
+      console.log(chartData);
+    };
+
+    const createChart = () => {
+      d3.select('#chart').selectAll('*').remove();
+      if (chartData) {
+        // const chartOrder = getSelectedRowOrder();
+        // chartData.rows.sort(chartOrder);
+        // // console.log(chartData);
+
+        const divWidth = document.getElementById('chart').clientWidth;
+        const chartHeight = 400;
+
+        document.getElementById('chart').style.height = `${chartHeight}px`;
+
+        chart = pcpChart()
+          .width(divWidth)
+          .height(chartHeight)
+          .margin(margin);
+        d3.select('#chart').call(chart, chartData);
+        // // const height = chartData.rows.length * rowHeight + margin.top + margin.bottom;
+        // // console.log(height);
+
+        // const selectedGroupField = getSelectedGroupField();
+        // if (selectedGroupField === "Site" || selectedGroupField === "Manufacturer") {
+        //   margin.left = leftMargins.medium;
+        // } else if (selectedGroupField === "Computer") {
+        //   margin.left = leftMargins.long;
+        // } else {
+        //   margin.left = leftMargins.small;
+        // }
+
+        // const textValue = document.getElementById('searchText').value;
+
+        // chart = heatmapChart()
+        //   .setRowFilterStrings(textValue)
+        //   .margin(margin)
+        //   .width(divWidth)
+        //   .rowHeight(rowHeight);
+        // d3.select('#chart').call(chart, chartData);
+      }
+    };
+
+    d3.csv(
+      "data/output.csv",
+      ({
+        date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region, interconnect_family, operating_system, system_family
+      }) => ({
+        // date: parseTime(date),
+        date,
+        rank: +rank,
+        computer: computer,
+        site: site.trim(),
+        rmax: +rmax,
+        rpeak: +rpeak,
+        manufacturer: manufacturer,
+        name: name,
+        segment: segment,
+        country: country,
+        continent: continent,
+        region: region,
+        power: +power,
+        interconnect_family,
+        operating_system,
+        system_family
+      })
+      // ({
+      //   date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region
+      // }) => ({
+      //   // date: parseTime(date),
+      //   date,
+      //   rank: +rank,
+      //   computer: computer,
+      //   site: site.trim(),
+      //   rmax: +rmax,
+      //   rpeak: +rpeak,
+      //   manufacturer: manufacturer,
+      //   name: name,
+      //   segment: segment,
+      //   country: country,
+      //   continent: continent,
+      //   region: region,
+      //   power: +power
+      // })
+    )
+      .then(function(data) {
+        fileData = data;
+        loadData();
+        createChart();
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  </script>
+</html>
