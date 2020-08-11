@@ -271,7 +271,7 @@
     };
         
     d3.csv(
-      "output.csv",
+      "data/output.csv",
       ({
         date,
         rank,
@@ -308,6 +308,7 @@
 
         dates = [...new Set(fileData.map(d => d.date.getTime()))];
         dates.sort(d3.ascending);
+        console.log(dates);
         const slider = document.getElementById('dateSlider');
         slider.min = 0;
         slider.max = dates.length-1;
@@ -317,8 +318,6 @@
 
         let countries = [...new Set(fileData.map(d => d.country))];
         console.log(countries);
-
-        // currentDate = new Date(dates[dates.length-1]);
 
         loadData();
         createChart();

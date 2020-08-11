@@ -34,6 +34,25 @@
       #logo {
         text-align: right;
       }
+
+      .brush .extent {
+            fill-opacity: .3;
+            stroke: #fff;
+            shape-rendering: crispEdges;
+        }
+
+      .axis line,
+      .axis path {
+          fill: none;
+          stroke: rgb(51, 51, 51);
+          stroke-width: 1.5;
+          shape-rendering: crispEdges;
+      }
+
+      .axis text {
+          fill: #646464;
+          text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+      }
     </style>
   </head>
   <body>
@@ -152,17 +171,26 @@
 
       chartData = {
         dimensions: [
+          {name: 'date', type: 'temporal'},
+          {name: 'country', type: 'categorical'},
           {name: 'rank', type: 'numerical'},
-          // {name: 'country', type: 'categorical'},
           {name: 'rmax', type: 'numerical'},
-          // {name: 'site', type: 'categorical'},
-          {name: 'rpeak', type: 'numerical'}
+          {name: 'site', type: 'categorical'},
+          {name: 'rpeak', type: 'numerical'},
+          {name: 'manufacturer', type: 'categorical'},
+          {name: 'power', type: 'numerical'}
         ],
         tuples: fileData.map(d => {
           return {
+            date: d.date,
+            country: d.country,
             rank: d.rank,
             rmax: d.rmax,
-            rpeak: d.rpeak
+            rpeak: d.rpeak,
+            site: d.site,
+            manufacturer: d.manufacturer,
+            // segment: d.segment,
+            power: d.power
           };
         })
       }
@@ -184,6 +212,7 @@
         chart = pcpChart()
           .width(divWidth)
           .height(chartHeight)
+          .showUnselectedLines(false)
           .margin(margin);
         d3.select('#chart').call(chart, chartData);
         // // const height = chartData.rows.length * rowHeight + margin.top + margin.bottom;
@@ -214,8 +243,8 @@
       ({
         date, rank, computer, site, rmax, rpeak, manufacturer, name, segment, country, continent, power, region, interconnect_family, operating_system, system_family
       }) => ({
-        // date: parseTime(date),
-        date,
+        date: parseTime(date),
+        // date,
         rank: +rank,
         computer: computer,
         site: site.trim(),
