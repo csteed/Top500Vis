@@ -59,7 +59,7 @@
     <table>
       <tr>
         <td>
-          <h2>Supercomputing <a href="http://top500.org" target="_blank">Top500</a> List Heatmap Visualization</h2>
+          <h2>Supercomputing <a href="http://top500.org" target="_blank">Top500</a> List Parallel Coordinates Visualization</h2>
           <strong>Data Source:</strong> <a href="http://top500.org" target="_blank">Top500 List</a> from the <a href="https://www.icl.utk.edu/" target="_blank">Univ. of Tennessee Innovative Computing Laboratory</a> <br/>
           <strong>Author:</strong> <a href="https://csteed.com" target="_blank">Chad A. Steed</a>, <a href="https://vis.ornl.gov" target="_blank">VISTA Lab</a>, <a href="https://www.ornl.gov/division/csmd" target="_blank">Computer Science and Mathematics Division</a>, <a href="https://ornl.gov" target="_blank">Oak Ridge National Laboratory</a>
           <br/><br/>
@@ -71,44 +71,9 @@
 
     <h3>Description:</h3>
     <p>
-      This pages presents the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a heatmap, based on the selected grouping field. When multiple systems are ranked for a ranking release (denoted by the x-axis ticks), the highest ranking is preserved (e.g., if grouping by Country, a colored rectangle represents the highest rank for each Top500 release).
+      This pages presents the <a href="http://top500.org" target="_blank">Top500</a> rankings of supercomputers as a parallel coordinates chart.
     </p>
-    <ul>
-      <li><b>Group Field:</b> Select the field that will be used to create the string lines</li>
-      <li><b>Rank Filter:</b> Set the maximum rank to filter out lower ranked systems</li>
-      <li><b>Sort By:</b> Determines how the rows are sorted</li>
-      <li><b>Row Name Filter:</b> Removes all rows except those that include letters typed here. Use commas to search over multiple keywords.</li>
-    </ul>
-
-    <h3>Controls:</h3>
-    <p>
-      <label for="groupFieldSelect">Group Field: </label>
-      <select id="groupFieldSelect" onChange="groupFieldSelectChanged()">
-        <option selected>Country</option>
-        <option>Continent</option>
-        <option>Computer</option>
-        <option>Interconnect_Family</option>
-        <option>Manufacturer</option>
-        <option>Operating_System</option>
-        <option>Region</option>
-        <option>Segment</option>
-        <option>Site</option>
-        <option>System_Family</option>
-      </select><br/><br/>
-
-      <label for="rankFilterSelect">Rank Filter: </label>
-      <select id="rankFilterSelect" onChange="rankFilterSelectChanged()">
-        <option selected>500</option>
-        <option>200</option>
-        <option>100</option>
-        <option>50</option>
-        <option>20</option>
-      </select><br/><br/>
-
-      <label for="searchText">Row Name Filter:&nbsp;&nbsp;</label>
-      <input id="searchText" type="text"></input>
-    </p>
-
+    
     <div id="chart" style="position: relative;"></div>
 
     <center>
@@ -139,7 +104,7 @@
       }
     };
 
-    document.getElementById('searchText').addEventListener('input', searchTextInputHandler);
+    // document.getElementById('searchText').addEventListener('input', searchTextInputHandler);
 
     const rankFilterSelectChanged = () => {
       loadData();
