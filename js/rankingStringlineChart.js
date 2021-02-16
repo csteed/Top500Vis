@@ -169,7 +169,7 @@ var rankingStringlineChart = function () {
       //   .call(d3.axisLeft(y).tickFormat(x => `#${x}`))
       //   .call(g => g.select(".domain").remove());
 
-        const voronoi = d3.Delaunay
+      const voronoi = d3.Delaunay
         .from(ranks, d => x(d.rank.date), d => y(d.rank.value))
         .voronoi([0, 0, width, height]);
       
