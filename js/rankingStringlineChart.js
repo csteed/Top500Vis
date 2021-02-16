@@ -25,22 +25,20 @@ var rankingStringlineChart = function () {
   let shadowBackgroundAlpha = 0.1;
 
   let canvasMargin = 4;
+  let dates;
 
   function chart(selection, data) {
     chartData = data.slice();
     chartDiv = selection;
 
     ranks = d3.merge(chartData.map(d => d.values.map(s => ({name: d, rank: s}))));
-    // console.log(ranks);
 
     chartData.map(d => {
       const values = d.values.map(v => v.value);
       d.mean = Math.round(d3.mean(values));
       d.min = d3.min(values);
       d.max = d3.max(values);
-      // d.mean = Math.round(d3.mean(d.values, v => v.value));
     });
-    // console.log(chartData);
     drawChart();
   }
 
@@ -98,8 +96,8 @@ var rankingStringlineChart = function () {
         .append('svg:g')
           .attr("transform", `translate(${margin.left},${margin.top})`);
       
-      const dates = [...new Set(d3.merge(chartData.map(d => d.values.map(v => v.date.getTime()))))].map(d => new Date(d)).sort(d3.ascending);
-      // console.log(dates);
+      dates = [...new Set(d3.merge(chartData.map(d => d.values.map(v => v.date.getTime()))))].map(d => new Date(d)).sort(d3.ascending);
+      console.log(dates);
         
       x = d3.scaleTime()
         .domain(d3.extent(dates))
@@ -141,12 +139,8 @@ var rankingStringlineChart = function () {
         .domain([1, d3.max(ranks, d => d.rank.value)])
         .range([0, height]);
 
-      // y.ticks(y.ticks().unshift(1));
-
-      // console.log(y.ticks());
       let ticks = y.ticks();
       ticks.unshift(1);
-      // console.log(ticks);
 
       const yAxis = g => g
         .call(d3.axisLeft(y)
@@ -163,11 +157,6 @@ var rankingStringlineChart = function () {
         .call(xAxis);
       svg.append("g")
         .call(yAxis);
-
-      // svg.append("g")
-      //   // .call(d3.axisLeft(y).tickSize(0))
-      //   .call(d3.axisLeft(y).tickFormat(x => `#${x}`))
-      //   .call(g => g.select(".domain").remove());
 
       const voronoi = d3.Delaunay
         .from(ranks, d => x(d.rank.date), d => y(d.rank.value))
@@ -206,10 +195,6 @@ var rankingStringlineChart = function () {
             .on("mouseout", () => {
               tooltip.style("display", "none")
               hoverData = [];
-              // foreground.globalAlpha = 0.4;
-              // foreground.lineWidth = 1;
-              // foregroundData = chartData;
-              // backgroundData = [];
               drawLines();
             })
             .on("mouseover", d => {
@@ -221,7 +206,6 @@ var rankingStringlineChart = function () {
               const box = text.node().getBBox();
               
               if (x(d.rank.date) + box.width + 20 > width) {
-                // console.log('tooltip clipped on right side');
                 path.attr("d", `
                   M${box.x - 10},${box.y - 10}
                   h${box.width + 20}
@@ -249,32 +233,7 @@ var rankingStringlineChart = function () {
                 })`);  
               }
               
-              // The original tooltip was below the data node
-              // path.attr("d", `
-              //   M${box.x - 10},${box.y - 10}
-              //   H${box.width / 2 - 5}l5,-5l5,5
-              //   H${box.width + 10}
-              //   v${box.height + 20}
-              //   h-${box.width + 20}
-              //   z
-              // `);
-              // tooltip.attr("transform", `translate(${
-              //   x(d.rank.date) - box.width / 2},${
-              //   y(d.rank.value) + 28
-              // })`);
-
-              // foregroundData = [];
-              // backgroundData = [];
-              // foreground.globalAlpha = 1.;
-              // foreground.lineWidth = 2;
               hoverData = chartData.filter(c => c.name === d.name.name);
-              // chartData.map(s => {
-              //   if (s.name === d.name.name) {
-              //     hoverData.push(s);
-              //   } else {
-              //     backgroundData.push(s);
-              //   }
-              // });
               drawLines();
             });
       };
@@ -282,11 +241,8 @@ var rankingStringlineChart = function () {
       svg.append("g")
         .call(tooltip);
 
-      // foregroundData = chartData;
-
       backgroundData = chartData;
-      drawLines();
-      
+      drawLines();      
     }
   }
 
@@ -295,15 +251,15 @@ var rankingStringlineChart = function () {
       let previousStrokeStyle = ctx.strokeStyle;
       ctx.strokeStyle = "white"
       ctx.lineWidth = ctx.lineWidth * 4;
+      const previousAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = 0.7;
       ctx.beginPath();
 
       data.values.map((d,i) => {
         if (i === 0) {
-          // ctx.moveTo(x(d.date), y(d.value));
           ctx.moveTo(x(d.date)-2, y(d.value));
           ctx.lineTo(x(d.date)+2, y(d.value));
         } else {
-          // ctx.lineTo(x(d.date), y(d.value));
           ctx.lineTo(x(d.date)-2, y(d.value));
           ctx.lineTo(x(d.date)+2, y(d.value));
         }
@@ -312,30 +268,57 @@ var rankingStringlineChart = function () {
       ctx.stroke();
       ctx.strokeStyle = previousStrokeStyle;
       ctx.lineWidth = ctx.lineWidth / 4;
+      ctx.globalAlpha = previousAlpha;
     }
 
-    // let highlighted = highlightStrings.length > 0 ? isNameHighlighted(data.name) : false;
-    // let originalAlpha = ctx.globalAlpha;
-    // highlighted ? ctx.globalAlpha = 1 : null;
-    // console.log(highlighted);
-
-    ctx.beginPath();
-
     data.values.map((d,i) => {
-      if (i === 0) {
-        // ctx.moveTo(x(d.date), y(d.value));
-        ctx.moveTo(x(d.date)-2, y(d.value));
-        ctx.lineTo(x(d.date)+2, y(d.value));
-      } else {
-        // ctx.lineTo(x(d.date), y(d.value));
-        ctx.lineTo(x(d.date)-2, y(d.value));
-        ctx.lineTo(x(d.date)+2, y(d.value));
+      // console.log(dates.findIndex(date => date.getTime() === d.date.getTime()));
+      if (i !== 0) {
+        const prev_date_idx = dates.findIndex(date => date.getTime() === data.values[i-1].date.getTime());
+        const date_idx = dates.findIndex(date => date.getTime() === d.date.getTime());
+        
+        ctx.beginPath();    
+        const previousLineWidth = ctx.lineWidth;
+        if (date_idx === prev_date_idx + 1) {
+          // ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+        } else {
+          ctx.lineWidth = 1;
+          ctx.setLineDash([2,4]);
+        }
+        ctx.moveTo(x(data.values[i-1].date)+3, y(data.values[i-1].value));
+        ctx.lineTo(x(d.date)-3, y(d.value));
+        ctx.stroke();
+        ctx.lineWidth = previousLineWidth;
       }
+      ctx.beginPath();
+      ctx.setLineDash([]);
+      // ctx.lineWidth = 2;
+      ctx.moveTo(x(d.date)-3, y(d.value));
+      ctx.lineTo(x(d.date)+3, y(d.value));
+      ctx.stroke();
     });
-
-    ctx.stroke();
-
-    // highlighted ? ctx.globalAlpha = originalAlpha : null;
+    
+    // ctx.beginPath();
+    // data.values.map((d,i) => {
+    //   // console.log(dates.findIndex(date => date.getTime() === d.date.getTime()));
+    //   if (i === 0) {
+    //     ctx.moveTo(x(d.date)-2, y(d.value));
+    //     ctx.lineTo(x(d.date)+2, y(d.value));
+    //   } else {
+    //     const prev_date_idx = dates.findIndex(date => date.getTime() === data.values[i-1].date.getTime());
+    //     const date_idx = dates.findIndex(date => date.getTime() === d.date.getTime());
+        
+    //     if (date_idx === prev_date_idx + 1) {
+    //       ctx.lineTo(x(d.date)-2, y(d.value));
+    //       ctx.lineTo(x(d.date)+2, y(d.value));
+    //     } else {
+    //       ctx.moveTo(x(d.date)-2, y(d.value));
+    //       ctx.lineTo(x(d.date)+2, y(d.value));
+    //     }
+    //   }
+    // });
+    // ctx.stroke();
   }
 
   function drawLines() {
