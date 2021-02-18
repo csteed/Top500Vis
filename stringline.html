@@ -161,14 +161,14 @@
         });
       }
 
-      const nestedGroups = d3.nest()
-        .key(groupValue).sortKeys(d3.ascending)
-        .sortValues((a,b) => d3.ascending(a.date, b.date))
-        .entries(filteredFileData);
-      console.log(nestedGroups);
+      // const nestedGroups = d3.nest()
+      //   .key(groupValue).sortKeys(d3.ascending)
+      //   .sortValues((a,b) => d3.ascending(a.date, b.date))
+      //   .entries(filteredFileData);
+      // console.log(nestedGroups);
 
       const groupedData = d3.group(filteredFileData, groupValue);
-      console.log(groupedData);
+      // console.log(groupedData);
 
       dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
       
@@ -182,9 +182,11 @@
           const dateIndex = dates.indexOf(d.date);
           if (isNaN(groupObject.values[dateIndex])) {
             groupObject.values[dateIndex] = d.rank;
+            // groupObject.values[dateIndex] = [d.rank];
           } else {
             if (d.rank < groupObject[dateIndex]) {
               groupObject[dateIndex] = d.rank;
+              // groupObject[dateIndex].push(d.rank);
             }
           }
         });

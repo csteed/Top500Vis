@@ -30,8 +30,6 @@ var rankingStringlineChart = function () {
   function chart(selection, data) {
     chartData = data.slice();
     chartDiv = selection;
-
-    console.log(chartData);
     ranks = d3.merge(chartData.map(d => d.values.map(s => ({name: d, rank: s}))));
 
     chartData.map(d => {
@@ -40,6 +38,7 @@ var rankingStringlineChart = function () {
       d.min = d3.min(values);
       d.max = d3.max(values);
     });
+
     drawChart();
   }
 
@@ -107,7 +106,7 @@ var rankingStringlineChart = function () {
       //   .lower();
 
       dates = [...new Set(d3.merge(chartData.map(d => d.values.map(v => v.date.getTime()))))].map(d => new Date(d)).sort(d3.ascending);
-      console.log(dates);
+      // console.log(dates);
         
       x = d3.scaleTime()
         .domain(d3.extent(dates))
