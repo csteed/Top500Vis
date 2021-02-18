@@ -2,7 +2,6 @@
 <meta charset="utf-8" />
 <html>
   <head>
-    <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
     <script src="js/d3.min.js"></script>
     <script src="js/d3-array.min.js"></script>
     <script src="js/d3-delaunay.min.js"></script>
@@ -11,9 +10,8 @@
     <style>
       body {
         font: 12px sans-serif;
-        /* margin: 4px 20px 0px 20px; */
-        /* background: gray; */
-        background-color: whitesmoke;
+        /* background-color: whitesmoke; */
+        background-color: white;
       }
 
       .top {
@@ -146,7 +144,6 @@
 
     const loadData = () => {
       const selectedGroupField = getSelectedGroupField().toLowerCase();
-      console.log(selectedGroupField);
 
       let groupValue;
       if (selectedGroupField === 'computer') {
@@ -168,27 +165,50 @@
         .key(groupValue).sortKeys(d3.ascending)
         .sortValues((a,b) => d3.ascending(a.date, b.date))
         .entries(filteredFileData);
+      console.log(nestedGroups);
+
+      const groupedData = d3.group(filteredFileData, groupValue);
+      console.log(groupedData);
 
       dates = [...new Set(fileData.map(d => d.date))].sort(d3.ascending);
       
       chartData = [];
-      nestedGroups.forEach(groupNode => {
+      groupedData.forEach((values, key) => {
         var groupObject = {
-          name: groupNode.key,
+          name: key,
           values: new Array(dates.length)
         };
-        groupNode.values.forEach(d => {
+        values.map(d => {
           const dateIndex = dates.indexOf(d.date);
           if (isNaN(groupObject.values[dateIndex])) {
             groupObject.values[dateIndex] = d.rank;
           } else {
-            if (d.rank < groupObject.values[dateIndex]) {
-              groupObject.values[dateIndex] = d.rank;
+            if (d.rank < groupObject[dateIndex]) {
+              groupObject[dateIndex] = d.rank;
             }
           }
         });
         chartData.push(groupObject);
       });
+
+      // chartData = [];
+      // nestedGroups.forEach(groupNode => {
+      //   var groupObject = {
+      //     name: groupNode.key,
+      //     values: new Array(dates.length)
+      //   };
+      //   groupNode.values.forEach(d => {
+      //     const dateIndex = dates.indexOf(d.date);
+      //     if (isNaN(groupObject.values[dateIndex])) {
+      //       groupObject.values[dateIndex] = d.rank;
+      //     } else {
+      //       if (d.rank < groupObject.values[dateIndex]) {
+      //         groupObject.values[dateIndex] = d.rank;
+      //       }
+      //     }
+      //   });
+      //   chartData.push(groupObject);
+      // });
 
       chartData.map(d => {
         var newValues = [];

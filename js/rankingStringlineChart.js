@@ -31,6 +31,7 @@ var rankingStringlineChart = function () {
     chartData = data.slice();
     chartDiv = selection;
 
+    console.log(chartData);
     ranks = d3.merge(chartData.map(d => d.values.map(s => ({name: d, rank: s}))));
 
     chartData.map(d => {
@@ -96,6 +97,15 @@ var rankingStringlineChart = function () {
         .append('svg:g')
           .attr("transform", `translate(${margin.left},${margin.top})`);
       
+      // svg.append("rect")
+      //   // .attr("x", -margin.left)
+      //   // .attr("y", -margin.top)
+      //   .attr("width", width)
+      //   .attr("height", height)
+      //   .attr("fill", "white")
+      //   .attr("stroke", "none")
+      //   .lower();
+
       dates = [...new Set(d3.merge(chartData.map(d => d.values.map(v => v.date.getTime()))))].map(d => new Date(d)).sort(d3.ascending);
       console.log(dates);
         
